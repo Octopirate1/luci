@@ -1,0 +1,5 @@
+﻿  Source.c
+C:\Users\Administrator\source\repos\SLP-Parser\SLP-Parser\Source.c(28,13): warning C4133:  'function': incompatible types - from 'FILE *' to 'const char *const '
+C:\Users\Administrator\source\repos\SLP-Parser\SLP-Parser\Source.c(20,1): error C4996:  'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\ucrt\stdio.h(208): message :  see declaration of 'fopen'
+C:\Users\Administrator\source\repos\SLP-Parser\SLP-Parser\Source.c(11,6): warning C4101:  'num': unreferenced local variable
