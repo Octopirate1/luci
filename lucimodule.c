@@ -4,7 +4,7 @@
 
 #include "luci.h"
 
-static PyObject *method_slippi(PyObject *self, PyObject *args)
+static PyObject *method_luci(PyObject *self, PyObject *args)
 {
 	char *filename = NULL;
 
@@ -19,22 +19,22 @@ static PyObject *method_slippi(PyObject *self, PyObject *args)
 }
 
 
-static PyMethodDef FputsMethods[] = {
-	{"luci", method_slippi, METH_VARARGS, "Python interface for Slippi parser module"},
+static PyMethodDef luciMethods[] = {
+	{"luci", method_luci, METH_VARARGS, "Python interface for Slippi parser module"},
 	{NULL, NULL, 0, NULL}
 };
 
 
-static struct PyModuleDef slippimodule = {
+static struct PyModuleDef lucimodule = {
 	PyModuleDef_HEAD_INIT,
 	"luci",
 	"Python interface for the LuCi C library",
 	-1,
-	FputsMethods
+	luciMethods
 };
 
 
 PyMODINIT_FUNC PyInit_slippi(void)
 {
-    return PyModule_Create(&slippimodule);
+    return PyModule_Create(&lucimodule);
 }
