@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <alloca.h>
@@ -13,14 +12,6 @@
 
 #include "luci.h"
 
-#ifndef NDEBUG
-#define LUCI_DEBUG 1
-#define	DBG(s)	do { s } while (0)
-static void dump_mem(void *memp, size_t offset, int len);
-#else
-#define LUCI_DEBUG	0
-#define	DBG(s)	do { } while (0)
-#endif
 	//
 	// This is a two step parse, but fast.
 	// The first is to unpack a UBJSON binary file
@@ -29,43 +20,15 @@ static void dump_mem(void *memp, size_t offset, int len);
 	//
 
 
-typedef bool bool_t;
-typedef enum ELEMENT_TYPE { ET_New = 0, ET_Char, ET_String, ET_Int, ET_Float, ET_Array, ET_Object } element_type_t;
-
-typedef struct ELEMENT element_t;
-typedef struct ARRAY_BLOCK array_block_t;
-
-struct ELEMENT {
-	element_type_t type;
-	char *namep;
-	union {
-		int char_value;
-		char *stringp;
-		int64_t integer_value;
-		double float_value;
-		array_block_t *arrayp;
-		element_t *object_listp;
-	} u;
-	element_t *nextp;
-};
-
-	// Only supports fixed size elements
-	// build a chain of these for multi-sized array elements.
-struct ARRAY_BLOCK {
-	size_t count;
-	size_t size;
-	void *datap;
-	array_block_t *nextp;
-};
 
 static element_t *new_element();
 static array_block_t *new_array_block(void *memp, size_t count, size_t size);
 static element_t *add_element(element_t *listp, element_t *newp);
-static void element_list_dump(element_t *listp);
+//static void element_list_dump(element_t *listp);
 static void element_list_recurse(element_t *listp, int indent);
-static void element_dump(element_t *elemp, int indent);
-static void free_elements(element_t *listp);
-static element_t *find_element_by_name(element_t *listp, char *namep);
+//static void element_dump(element_t *elemp, int indent);
+//static void free_elements(element_t *listp);
+//static element_t *find_element_by_name(element_t *listp, char *namep);
 static void prindent(int n);
 
 
@@ -81,12 +44,11 @@ static size_t process_ubjson_noop(void *memp, size_t offset);
 static size_t process_ubjson_string_name(void *memp, size_t offset, char **strpp);
 static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *bufp);
 
-static void process_raw_data(void *datap, size_t size);
 
 
 size_t map_and_process(char *filenamep)
 {
-	size_t ret = -1;
+	size_t ret = 0;
 	struct stat sb;
 	int res;
 	int fh = res = open(filenamep, O_RDONLY);
@@ -117,7 +79,7 @@ size_t map_and_process(char *filenamep)
 
 #if LUCI_DEBUG	// {
 
-static void dump_mem(void *memp, size_t offset, int len)
+void dump_mem(void *memp, size_t offset, int len)
 {
 	uint8_t *p = memp;
 	p += offset;
@@ -172,15 +134,6 @@ static bool_t process_file(void *memp, size_t size)
 	free_elements(listp);
 	return (res);
 }
-
-
-
-
-static void process_raw_data(void *ptr, size_t len)
-{
-	printf("Processing RAW data\n");
-}
-
 
 
 
@@ -261,7 +214,7 @@ static array_block_t *process_ubjson_array(void *memp, size_t *offsetp)
 		type = p[offset];
 
 		switch (type) {
-		case '}':
+		case ']':
 			offset ++;
 			goto done;
 
@@ -592,7 +545,7 @@ static void free_array_block(array_block_t *arrayp)
 }
 
 
-static void free_elements(element_t *listp)
+void free_elements(element_t *listp)
 {
 	if (listp == NULL) return;
 	free_elements(listp->nextp);
@@ -618,7 +571,7 @@ static void free_elements(element_t *listp)
 	free(listp);
 }
 
-static void element_list_dump(element_t *listp)
+void element_list_dump(element_t *listp)
 {
 	printf("{\n");
 	element_list_recurse(listp, 1);
@@ -634,7 +587,7 @@ static void element_list_recurse(element_t *listp, int indent)
 	}
 }
 
-static void element_dump(element_t *elemp, int indent)
+void element_dump(element_t *elemp, int indent)
 {
 	prindent(indent);
 	printf("\"%s\" = ", elemp->namep);
@@ -675,7 +628,7 @@ static void prindent(int n)
 	for (int i=0; i<n; i++) printf("  ");
 }
 
-static element_t *find_element_by_name(element_t *listp, char *namep)
+element_t *find_element_by_name(element_t *listp, char *namep)
 {
 	while (listp != NULL) {
 		if (strcmp(namep, listp->namep)==0) break;
