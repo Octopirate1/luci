@@ -1,7 +1,9 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -9,7 +11,7 @@ size_t map_and_process(char *filenamep);
 void process_raw_data(void *ptr, size_t len);
 
 
-#ifndef NDEBUG
+#ifdef DEBUG
 #define LUCI_DEBUG 1
 #define	DBG(s)	do { s } while (0)
 void dump_mem(void *memp, size_t offset, int len);
@@ -54,8 +56,12 @@ struct ARRAY_BLOCK {
 	array_block_t *nextp;
 };
 
+
+element_t *new_element();
+array_block_t *new_array_block(void *memp, size_t count, size_t size);
+element_t *add_element(element_t *listp, element_t *newp);
 void element_list_dump(element_t *listp);
 void element_dump(element_t *elemp, int indent);
+void element_list_recurse(element_t *listp, int indent);
 void free_elements(element_t *listp);
 element_t *find_element_by_name(element_t *listp, char *namep);
-
