@@ -72,13 +72,13 @@ typedef struct GAME_INFO_BLOCK game_info_block_t; // technically a uint8[312], b
 typedef struct GAME_INFO_BLOCK_PORT game_info_block_port_t; // technically a uint8[312], but struct makes it far more clear what everything is, + can be passed into python as an object
 
 #define VERSION_LENGTH	4
-#define PORT_AMOUNT		4
+#define PORT_COUNT		3	//technically 4 but arrays are 0indexed
 #define NAMETAG_LENGTH	8
 struct GAME_START {
 	uint8_t version[VERSION_LENGTH];
 	game_info_block_t *game_info_block;
 	uint32_t random_seed;
-	game_start_port_t *ports[PORT_AMOUNT]; // pointer to each port, null if port is not used
+	game_start_port_t *ports[PORT_COUNT]; // pointer to each port, null if port is not used
 	bool_t pal;
 	bool_t frozen_ps;
 };
@@ -104,7 +104,7 @@ struct GAME_INFO_BLOCK {
 	uint8_t item_spawn_bitfield_4;
 	uint8_t item_spawn_bitfield_5;
 	float damage_ratio;
-	game_info_block_port_t *ports[PORT_AMOUNT];
+	game_info_block_port_t *ports[PORT_COUNT];
 };
 
 struct GAME_INFO_BLOCK_PORT {
