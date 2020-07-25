@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
 static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep);
@@ -10,12 +11,16 @@ static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postfra
 static size_t process_event(uint8_t *p);
 typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39 } event_t;
 
+static int count_chars(game_info_block_port_t *ports[PORT_COUNT]);
+
 void process_raw_data(void *ptr, size_t len)
 {
 	uint8_t *p = (uint8_t*)ptr;
 	uint8_t *currentp = p;
 	size_t offset = 0;
 	event_t type;
+
+	int gs_count = 0;
 
 	// pre_frame_update_t *prevpreframep = NULL;
 
@@ -41,8 +46,12 @@ void process_raw_data(void *ptr, size_t len)
 				event_size = process_event(currentp); // should be first object, then never encountered again
 				break;
 			case EVENT_GAME_START:;
+				gs_count++;
+				if (gs_count >= 2) goto fail;
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
+				int char_count = count_chars(gamestartp->game_info_block->ports);
+				printf("char_count: %d\n", char_count);
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
 				pre_frame_update_t *preframep = (pre_frame_update_t *)malloc(sizeof(pre_frame_update_t));
@@ -57,13 +66,17 @@ void process_raw_data(void *ptr, size_t len)
 				break;
 		}
 
+		// add pre_frame_update_t objects to the frame_obj until case EVENT_POST_FRAME_UPDATE is triggered, then count how many
+		// pre_frame_update_t objects were added (hence how many characters) and add the same amount of post_frame objs. remember to use
+		// the is_follower bool to decide if put in char array or make null.
+
 		if (event_size <= 0) goto fail;
 
 		offset += event_size;
 	} while (true);
 
 	DBG(fflush(stdout););
-	// return (elemlistp);
+	// return 0;
 
 	fail:;
 		DBG(printf("raw operation failed\n"););
@@ -71,9 +84,17 @@ void process_raw_data(void *ptr, size_t len)
 		// return (NULL);
 }
 
-static size_t process_event(uint8_t *p)
+// utils
+
+static int count_chars(game_info_block_port_t *ports[PORT_COUNT])
 {
-	return (p[1]+1);
+	int char_count = 0;
+	for (int i = 0;i < PORT_COUNT;i++){
+		if (ports[i]->player_type != 3) {
+			if (ports[i]->extern_char_id == 0x0E) {char_count += 2;} else {char_count += 1;}
+		}
+	}
+	return char_count;
 }
 
 static float ntohf(uint32_t net32)
@@ -88,6 +109,13 @@ static float ntohf(uint32_t net32)
     return value.f;
 }
 
+// process functions
+
+static size_t process_event(uint8_t *p)
+{
+	return (p[1]+1);
+}
+
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 {
 
@@ -96,38 +124,44 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 
 	game_info_block_t *gameinfoblockp = (game_info_block_t*)malloc(sizeof(game_info_block_t));
 
-	game_start_port_t *gamestartportp[PORT_COUNT];
-	game_info_block_port_t *gameibportp[PORT_COUNT];
-
-	if (gamestartp == NULL || gameinfoblockp == NULL || gamestartportp == NULL || gameibportp == NULL) goto malloc_fail;
+	//game_start_port_t *gamestartportp[PORT_COUNT];
+	// game_info_block_port_t *gameibportp[PORT_COUNT];
+	// assert(gamestartp != NULL);
+	// assert(gameinfoblockp != NULL);
+	if (gamestartp == NULL || gameinfoblockp == NULL) goto malloc_fail;
 
 	for(int i = 0;i<PORT_COUNT;i++){
-		gamestartportp[i] = (game_start_port_t*)malloc(sizeof(game_start_port_t));
+		game_info_block_port_t *gip = (game_info_block_port_t*)malloc(sizeof(game_info_block_port_t));
+		game_start_port_t *gsp = (game_start_port_t*)malloc(sizeof(game_start_port_t));
 
-		gamestartportp[i]->dashback_fix = (uint32_t)ntohl(ibp->gsb_port[i].dashback_fix);
-		gamestartportp[i]->shield_drop_fix = (uint32_t)ntohl(ibp->gsb_port[i].shield_drop_fix);
-		for (int j=0; j<NAMETAG_LENGTH; j++) gamestartportp[i]->nametag[j] = (uint16_t)ntohs(ibp->nametag[i][j]);
+		// assert(gip != NULL);
+		// assert(gsp != NULL);
+		if (gip == NULL || gsp == NULL) goto malloc_fail;
 
-		gameibportp[i] = (game_info_block_port_t*)malloc(sizeof(game_info_block_port_t));
+		gsp->dashback_fix = (uint32_t)ntohl(ibp->gsb_port[i].dashback_fix);
+		gsp->shield_drop_fix = (uint32_t)ntohl(ibp->gsb_port[i].shield_drop_fix);
+		for (int j=0; j<NAMETAG_LENGTH; j++) gsp->nametag[j] = (uint16_t)ntohs(ibp->nametag[i][j]);
 
-		gameibportp[i]->extern_char_id = ibp->gib_port[i].extern_char_id;
-		gameibportp[i]->player_type = ibp->gib_port[i].player_type;
-		gameibportp[i]->stock_start_count = ibp->gib_port[i].stock_start_count;
-		gameibportp[i]->costume_index = ibp->gib_port[i].costume_index;
-		gameibportp[i]->team_shade = ibp->gib_port[i].team_shade;
-		gameibportp[i]->handicap = ibp->gib_port[i].handicap;
-		gameibportp[i]->team_id = ibp->gib_port[i].team_id;
-		gameibportp[i]->player_bitfield = ibp->gib_port[i].player_bitfield;
-		gameibportp[i]->cpu_level = ibp->gib_port[i].cpu_level;
-		gameibportp[i]->offense_ratio = ntohf(ibp->gib_port[i].offense_ratio); // FLOATS!! AAAAARGHHH have to do bs ntohf or smth
-		gameibportp[i]->defense_ratio = ntohf(ibp->gib_port[i].defense_ratio);
-		gameibportp[i]->model_scale = ntohf(ibp->gib_port[i].model_scale);
+		gip->extern_char_id = ibp->gib_port[i].extern_char_id;
+		gip->player_type = ibp->gib_port[i].player_type;
+		gip->stock_start_count = ibp->gib_port[i].stock_start_count;
+		gip->costume_index = ibp->gib_port[i].costume_index;
+		gip->team_shade = ibp->gib_port[i].team_shade;
+		gip->handicap = ibp->gib_port[i].handicap;
+		gip->team_id = ibp->gib_port[i].team_id;
+		gip->player_bitfield = ibp->gib_port[i].player_bitfield;
+		gip->cpu_level = ibp->gib_port[i].cpu_level;
+		gip->offense_ratio = ntohf(ibp->gib_port[i].offense_ratio); // FLOATS!! AAAAARGHHH have to do bs ntohf or smth
+		gip->defense_ratio = ntohf(ibp->gib_port[i].defense_ratio);
+		gip->model_scale = ntohf(ibp->gib_port[i].model_scale);
+
+		gameinfoblockp->ports[i] = gip;
+		gamestartp->ports[i] = gsp;
 	};
 
 	memcpy(gamestartp->version, ibp->version, VERSION_LENGTH); // don't need to byte flip bc uint8 so no for loop lulz
 	gamestartp->game_info_block = gameinfoblockp;
 	gamestartp->random_seed = (uint32_t)ntohl(ibp->random_seed);
-	memcpy(gamestartp->ports, gamestartportp, PORT_COUNT);
 	gamestartp->pal = (bool_t)ibp->pal;
 	gamestartp->frozen_ps = (bool_t)ibp->frozen_ps;
 
@@ -145,7 +179,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 	gameinfoblockp->item_spawn_bitfield_4 = ibp->item_spawn_bitfield_4;
 	gameinfoblockp->item_spawn_bitfield_5 = ibp->item_spawn_bitfield_5;
 	gameinfoblockp->damage_ratio = ntohf(ibp->damage_ratio); //ntohf
-	memcpy(gameinfoblockp->ports, gameibportp, PORT_COUNT);
+//	printf("%p, %p, %p, %p \n", gameibportp[0], gameibportp[1], gameibportp[2], gameinfoblockp->ports[3]);
 
 	// printf("Offset for pal = %p\n", &(((gsfullblock_t*)0)->pal)); // oll korrect
 
