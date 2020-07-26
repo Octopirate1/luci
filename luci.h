@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 size_t map_and_process(char *filenamep);
-void process_raw_data(void *ptr, size_t len);
+int process_raw_data(void *ptr, size_t len); // change to pointer to game object return type
 
 
 #ifdef DEBUG
@@ -184,6 +184,21 @@ typedef struct __attribute__((__packed__)) GSFULLBLOCK  {
 
 
 
+typedef struct GAME_END game_end_t;
+
+struct GAME_END {
+	uint8_t game_end_method;
+	int8_t lras_init;
+};
+
+typedef struct __attribute__((__packed__)) GAMEENDFULLBLOCK  {
+	uint8_t	event_type; // offset 0x0
+	uint8_t game_end_method; // offset 0x1
+	int8_t lras_init; // offset 0x2
+} gameendfullblock_t;
+
+
+
 typedef struct PRE_FRAME_UPDATE pre_frame_update_t;
 
 struct PRE_FRAME_UPDATE {
@@ -245,7 +260,7 @@ struct POST_FRAME_UPDATE {
 	float_t y_position;
 	float_t facing_direction;
 	float_t damage_percent;
-	float_t shield_size;
+	float_t shield_strength;
 	uint8_t last_hit_id;
 	uint8_t current_combo_count;
 	uint8_t last_hit_by;
@@ -281,7 +296,7 @@ typedef struct __attribute__((__packed__)) POSTFIFULLBLOCK  {
 	uint32_t y_position; // 0xE
 	uint32_t facing_direction; // 0x12
 	uint32_t damage_percent; // 0x16
-	uint32_t shield_size; // 0x1A
+	uint32_t shield_strength; // 0x1A
 	uint8_t last_hit_id; // 0x1E
 	uint8_t current_combo_count; // 0x1F
 	uint8_t last_hit_by; // 0x20

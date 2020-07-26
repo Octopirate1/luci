@@ -8,12 +8,16 @@
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
 static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep);
 static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postframep);
+static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
 static size_t process_event(uint8_t *p);
-typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39 } event_t;
+typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C } event_t;
+uint8_t version[4]; // very important for all functions, hence global
 
-static int count_chars(game_info_block_port_t *ports[PORT_COUNT]);
+// TODO: replace return if statements in process functions with case statements without braks in order to simulate > and <
 
-void process_raw_data(void *ptr, size_t len)
+// static int count_chars(game_info_block_port_t *ports[PORT_COUNT]);
+
+int process_raw_data(void *ptr, size_t len)
 {
 	uint8_t *p = (uint8_t*)ptr;
 	uint8_t *currentp = p;
@@ -22,13 +26,19 @@ void process_raw_data(void *ptr, size_t len)
 
 	int gs_count = 0;
 
-	// pre_frame_update_t *prevpreframep = NULL;
+	int32_t frame_count;
+	int32_t last_frame = -123;
 
-	// DBG(printf("Object offset=0x%lx : %c\n", offset, type););
+	// pre_frame_update_t *preframeupdatearray[8]; // 8 is max number of chars
+	// post_frame_update_t *postframeupdatearray[8];
+
+	frame_obj_t *framep = (frame_obj_t *)malloc(sizeof(frame_obj_t)); // first frame object pointer, set null values here
+	frame_obj_t *nextframep;
 
 	element_t *elemlistp = NULL;
 
-	// offset ++;
+	size_t event_size;
+
 	do {
 		type = p[offset];
 		currentp = p + offset;
@@ -39,36 +49,57 @@ void process_raw_data(void *ptr, size_t len)
 			break;
 		}
 
-		size_t event_size;
-
 		switch(type) {
 			case EVENT_PAYLOADS:;
 				event_size = process_event(currentp); // should be first object, then never encountered again
 				break;
 			case EVENT_GAME_START:;
 				gs_count++;
-				if (gs_count >= 2) goto fail;
+				// if (gs_count >= 2) goto fail;
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
-				int char_count = count_chars(gamestartp->game_info_block->ports);
-				printf("char_count: %d\n", char_count);
+				memcpy(&version, &gamestartp->version, sizeof(gamestartp->version));
+				printf("version: %d.%d.%d \n", version[0], version[1], version[2]);
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
 				pre_frame_update_t *preframep = (pre_frame_update_t *)malloc(sizeof(pre_frame_update_t));
 				event_size = process_pre_frame_update(currentp, preframep);
+				framep->ports[preframep->player_index].char_frames[preframep->is_follower].preframep = preframep; // finish
+				frame_count = preframep->frame_number; // if == -123 add frame obj to game obj
+				if (frame_count != last_frame) { // only for version < 3.0.0
+					nextframep = (frame_obj_t *)malloc(sizeof(frame_obj_t)); // make new frame object
+					framep->nextp = nextframep;
+					last_frame = frame_count;
+					framep = nextframep; // possibly make pointer to pointer and dereference in framep->nextp thing
+				}
 				break;
 			case EVENT_POST_FRAME_UPDATE:;
 				post_frame_update_t *postframep = (post_frame_update_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_post_frame_update(currentp, postframep);
+				framep->ports[postframep->player_index].char_frames[postframep->is_follower].postframep = postframep; // finish
+				break;
+			case EVENT_GAME_END:;
+				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
+				event_size = process_game_end(currentp, gameendp);
+				break;
+			case EVENT_FRAME_START:;
+				event_size = 0x9;
+				break;
+			case EVENT_ITEM_UPDATE:;
+				event_size = 0x29; // no
+				break;
+			case EVENT_FRAME_BOOKEND:;
+				event_size = 0x5;
 				break;
 			default:;
-				event_size = 1;
+				printf("failed at %ld: %X\n", offset, type);
+				event_size = 0;
 				break;
 		}
 
-		// add pre_frame_update_t objects to the frame_obj until case EVENT_POST_FRAME_UPDATE is triggered, then count how many
-		// pre_frame_update_t objects were added (hence how many characters) and add the same amount of post_frame objs. remember to use
-		// the is_follower bool to decide if put in char array or make null.
+		// if (last_frame == -123) {
+		// 	game_obj->frames = framep;
+		// }
 
 		if (event_size <= 0) goto fail;
 
@@ -76,26 +107,26 @@ void process_raw_data(void *ptr, size_t len)
 	} while (true);
 
 	DBG(fflush(stdout););
-	// return 0;
+	return 0;
 
 	fail:;
-		DBG(printf("raw operation failed\n"););
+		DBG(printf("raw operation failed due to bullshit\n"););
 		free_elements(elemlistp);
-		// return (NULL);
+		return (0);
 }
 
 // utils
 
-static int count_chars(game_info_block_port_t *ports[PORT_COUNT])
-{
-	int char_count = 0;
-	for (int i = 0;i < PORT_COUNT;i++){
-		if (ports[i]->player_type != 3) {
-			if (ports[i]->extern_char_id == 0x0E) {char_count += 2;} else {char_count += 1;}
-		}
-	}
-	return char_count;
-}
+// static int count_chars(game_info_block_port_t *ports[PORT_COUNT])
+// {
+// 	int char_count = 0;
+// 	for (int i = 0;i < PORT_COUNT;i++){
+// 		if (ports[i]->player_type != 3) {
+// 			if (ports[i]->extern_char_id == 0x0E) {char_count += 2;} else {char_count += 1;}
+// 		}
+// 	}
+// 	return char_count;
+// }
 
 static float ntohf(uint32_t net32)
 {
@@ -111,10 +142,14 @@ static float ntohf(uint32_t net32)
 
 // process functions
 
+
+
 static size_t process_event(uint8_t *p)
 {
 	return (p[1]+1);
 }
+
+
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 {
@@ -183,13 +218,27 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 
 	// printf("Offset for pal = %p\n", &(((gsfullblock_t*)0)->pal)); // oll korrect
 
-	return 0x1a2;
+	if (gamestartp->version[0] < 1) {
+		return 0x141;
+	}
+	if (gamestartp->version[0] < 2) {
+		if (gamestartp->version[1] < 5) {
+			if (gamestartp->version[1] < 3) {
+				return 0x161;
+			}
+			return 0x1A1;
+		}
+		return 0x1A2;
+	}
+	return 0x1a3;
 
 	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
 		DBG(printf("malloc failed\n"););
 		// free_elements(elemlistp);
 		return (0);
 }
+
+
 
 static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep)
 {
@@ -218,6 +267,13 @@ static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep
 	preframep->ucf_x_analog = ibp->ucf_x_analog;
 	preframep->damage_percent = ntohf(ibp->damage_percent);
 
+
+	if (version[0] < 1 || (version[0] == 1 && version[1] < 2)) {
+		return 0x3B;
+	}
+	if (version[0] == 1 && version[1] < 4) {
+		return 0x3C;
+	}
 	return 0x40;
 
 	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
@@ -225,6 +281,8 @@ static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep
 		// free_elements(elemlistp);
 		return (0);
 }
+
+
 
 static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postframep)
 {
@@ -242,7 +300,7 @@ static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postfra
 	postframep->y_position = ntohf(ibp->y_position);
 	postframep->facing_direction = ntohf(ibp->facing_direction);
 	postframep->damage_percent = ntohf(ibp->damage_percent);
-	postframep->shield_size = ntohf(ibp->shield_size);
+	postframep->shield_strength = ntohf(ibp->shield_strength);
 	postframep->last_hit_id = ibp->last_hit_id;
 	postframep->current_combo_count = ibp->current_combo_count;
 	postframep->last_hit_by = ibp->last_hit_by;
@@ -265,7 +323,43 @@ static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postfra
 	postframep->attack_air_y_speed = ntohf(ibp->attack_air_y_speed);
 	postframep->si_ground_x_speed = ntohf(ibp->si_ground_x_speed);
 
+
+	if (version[0] < 2) {
+		if (version[0] == 0 || version[1] < 2) {
+			return 0x22;
+		}
+		return 0x26;
+	}
+	if (version[0] == 2 || (version[0] == 3 && version[1] < 5)) {
+		if (version[1] < 1) {
+			return 0x34;
+		}
+		return 0x35;
+	}
 	return 0x49;
+
+	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
+		DBG(printf("malloc failed\n"););
+		// free_elements(elemlistp);
+		return (0);
+}
+
+
+
+static size_t process_game_end(uint8_t *p, game_end_t *gameendp) // making a function for this is silly? no u
+{
+	gameendfullblock_t *ibp = (gameendfullblock_t *)p;
+	if (ibp->event_type != EVENT_GAME_END) return (0);
+
+	if (gameendp == NULL) goto malloc_fail;
+
+	gameendp->game_end_method = ibp->game_end_method;
+	gameendp->lras_init = ibp->lras_init;
+
+	if (version[0] < 2) {
+		return 0x2;
+	}
+	return 0x5;
 
 	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
 		DBG(printf("malloc failed\n"););
