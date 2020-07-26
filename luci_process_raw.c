@@ -10,7 +10,7 @@ static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep
 static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postframep);
 static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
 static size_t process_event(uint8_t *p);
-typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D } event_t;
+typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D, EVENT_MESSAGE_SPLITTER = 0x10 } event_t;
 uint8_t version[4]; // very important for all functions, hence global
 
 // TODO: replace return if statements in process functions with case statements without braks in order to simulate > and <
@@ -46,12 +46,6 @@ int process_raw_data(void *ptr, size_t len)
 		type = p[offset];
 		currentp = p + offset;
 
-		if (offset == len) {
-			DBG(printf("end of object\n"););
-			// offset ++;
-			break;
-		}
-
 		switch(type) {
 			case EVENT_PAYLOADS:;
 				event_size = process_event(currentp); // should be first object, then never encountered again
@@ -62,7 +56,7 @@ int process_raw_data(void *ptr, size_t len)
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
 				game_obj->gamestartp = gamestartp;
-				printf("version: %d.%d.%d \n", version[0], version[1], version[2]);
+				printf("version: %d.%d.%d \n", version[0], version[1], version[2]); // make version control
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
 				pre_frame_update_t *preframep = (pre_frame_update_t *)malloc(sizeof(pre_frame_update_t));
@@ -88,6 +82,7 @@ int process_raw_data(void *ptr, size_t len)
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
 				game_obj->gameendp = gameendp;
+				goto success;
 				break;
 			case EVENT_FRAME_START:;
 				event_size = 0x9;
@@ -96,16 +91,13 @@ int process_raw_data(void *ptr, size_t len)
 				event_size = 0x29; // no
 				break;
 			case EVENT_FRAME_BOOKEND:;
-				event_size = 0x5;
+				event_size = 0x9;
 				break;
-			case EVENT_GECKO_LIST:;
-				event_size = 1;
-				do {
-					event_size += 0x204;
-					if (p[offset + event_size] == 1) break;
-				} while(true);
+			case EVENT_MESSAGE_SPLITTER:;
+				event_size = 0x205;
+				break;
 			default:;
-				printf("failed at %ld: %X\n", offset, type);
+				printf("failed at %lx: %X\n", offset, type);
 				event_size = 0;
 				break;
 		}
@@ -119,8 +111,10 @@ int process_raw_data(void *ptr, size_t len)
 		offset += event_size;
 	} while (true);
 
-	DBG(fflush(stdout););
-	return 0;
+	success:;
+		DBG(printf("end of object \n"););
+		DBG(fflush(stdout););
+		return 0;
 
 	fail:;
 		DBG(printf("raw operation failed\n"););

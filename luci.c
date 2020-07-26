@@ -105,9 +105,9 @@ void dump_mem(void *memp, size_t offset, int len)
 static bool_t process_file(void *memp, size_t size)
 {
 #if LUCI_DEBUG
-	dump_mem(memp, 0L, 64);
-	printf("\n");
-	dump_mem(memp, 0x2b4240L, 64);
+//	dump_mem(memp, 0L, 64);
+//	printf("\n");
+//	dump_mem(memp, 0x2b4240L, 64);
 #endif
 
 	size_t offset = 0;
@@ -117,6 +117,7 @@ static bool_t process_file(void *memp, size_t size)
 
 	element_list_dump(listp);
 
+	fflush(stdout);
 	element_t *raw_datap = find_element_by_name(listp, "raw");
 	if (raw_datap == NULL) {
 		printf("Unable to find the \"raw\" data block\n");
