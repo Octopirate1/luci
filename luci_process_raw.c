@@ -98,12 +98,12 @@ int process_raw_data(void *ptr, size_t len)
 			case EVENT_FRAME_BOOKEND:;
 				event_size = 0x5;
 				break;
-			case EVENT_FRAME_GECKO_LIST:;
+			case EVENT_GECKO_LIST:;
 				event_size = 1;
 				do {
 					event_size += 0x204;
 					if (p[offset + event_size] == 1) break;
-				}
+				} while(true);
 			default:;
 				printf("failed at %ld: %X\n", offset, type);
 				event_size = 0;
