@@ -1,4 +1,6 @@
-To build and install
+C instructions coming soon.
+
+To build and install (python, not working yet)
 ====================
 
 Navigate to the directory containing setup.py and run the following command:

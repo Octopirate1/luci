@@ -25,6 +25,7 @@ int process_raw_data(void *ptr, size_t len)
 	event_t type;
 
 	int gs_count = 0;
+	int ge_count = 0;
 
 	int32_t frame_count;
 	int32_t last_frame = -123;
@@ -34,6 +35,8 @@ int process_raw_data(void *ptr, size_t len)
 
 	frame_obj_t *framep = (frame_obj_t *)malloc(sizeof(frame_obj_t)); // first frame object pointer, set null values here
 	frame_obj_t *nextframep;
+
+	game_obj_t *game_obj = (game_obj_t *)malloc(sizeof(game_obj_t));
 
 	element_t *elemlistp = NULL;
 
@@ -55,10 +58,10 @@ int process_raw_data(void *ptr, size_t len)
 				break;
 			case EVENT_GAME_START:;
 				gs_count++;
-				// if (gs_count >= 2) goto fail;
+				if (gs_count >= 2) goto fail;
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
-				memcpy(&version, &gamestartp->version, sizeof(gamestartp->version));
+				game_obj->gamestartp = gamestartp;
 				printf("version: %d.%d.%d \n", version[0], version[1], version[2]);
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
@@ -67,6 +70,7 @@ int process_raw_data(void *ptr, size_t len)
 				framep->ports[preframep->player_index].char_frames[preframep->is_follower].preframep = preframep; // finish
 				frame_count = preframep->frame_number; // if == -123 add frame obj to game obj
 				if (frame_count != last_frame) { // only for version < 3.0.0
+					if (last_frame == -123) game_obj->firstframep = framep;
 					nextframep = (frame_obj_t *)malloc(sizeof(frame_obj_t)); // make new frame object
 					framep->nextp = nextframep;
 					last_frame = frame_count;
@@ -79,8 +83,11 @@ int process_raw_data(void *ptr, size_t len)
 				framep->ports[postframep->player_index].char_frames[postframep->is_follower].postframep = postframep; // finish
 				break;
 			case EVENT_GAME_END:;
+				ge_count++;
+				if (ge_count >= 2) goto fail;
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
+				game_obj->gameendp = gameendp;
 				break;
 			case EVENT_FRAME_START:;
 				event_size = 0x9;
@@ -218,12 +225,14 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 
 	// printf("Offset for pal = %p\n", &(((gsfullblock_t*)0)->pal)); // oll korrect
 
-	if (gamestartp->version[0] < 1) {
+	memcpy(&version, &gamestartp->version, sizeof(gamestartp->version)); // set global version
+
+	if (version[0] < 1) {
 		return 0x141;
 	}
-	if (gamestartp->version[0] < 2) {
-		if (gamestartp->version[1] < 5) {
-			if (gamestartp->version[1] < 3) {
+	if (version[0] < 2) {
+		if (version[1] < 5) {
+			if (version[1] < 3) {
 				return 0x161;
 			}
 			return 0x1A1;

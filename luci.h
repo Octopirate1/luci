@@ -320,6 +320,8 @@ typedef struct __attribute__((__packed__)) POSTFIFULLBLOCK  {
 	uint32_t si_ground_x_speed; // 0x45
 } postfifullblock_t;
 
+
+
 typedef struct FRAME_OBJ frame_obj_t;
 
 struct FRAME_OBJ {
@@ -330,4 +332,14 @@ struct FRAME_OBJ {
 		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL pointers if no follower
 	} ports[PORT_COUNT]; // NULL value if no player on port
 	frame_obj_t *nextp;
+};
+
+
+
+typedef struct GAME_OBJ game_obj_t;
+
+struct GAME_OBJ {
+	game_start_t *gamestartp;
+	frame_obj_t *firstframep;
+	game_end_t *gameendp;
 };
