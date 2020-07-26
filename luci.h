@@ -88,6 +88,8 @@ struct GAME_START {
 	game_start_port_t *ports[PORT_COUNT]; // pointer to each port, null if port is not used
 	bool_t pal;
 	bool_t frozen_ps;
+	uint8_t minor_scene;
+	uint8_t major_scene;
 };
 
 struct GAME_START_PORT {
@@ -180,6 +182,8 @@ typedef struct __attribute__((__packed__)) GSFULLBLOCK  {
 	uint16_t nametag[PORT_COUNT][NAMETAG_LENGTH];	// offset 0x161, 0x10*PORT_COUNT length
 	uint8_t pal; // 0x1A1
 	uint8_t frozen_ps; // 0x1A2
+	uint8_t minor_scene; // 0x1A3
+	uint8_t major_scene; // 0x1A4
 } gsfullblock_t;
 
 

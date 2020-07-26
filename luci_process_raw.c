@@ -10,7 +10,7 @@ static size_t process_pre_frame_update(uint8_t *p, pre_frame_update_t *preframep
 static size_t process_post_frame_update(uint8_t *p, post_frame_update_t *postframep);
 static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
 static size_t process_event(uint8_t *p);
-typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C } event_t;
+typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D } event_t;
 uint8_t version[4]; // very important for all functions, hence global
 
 // TODO: replace return if statements in process functions with case statements without braks in order to simulate > and <
@@ -98,6 +98,12 @@ int process_raw_data(void *ptr, size_t len)
 			case EVENT_FRAME_BOOKEND:;
 				event_size = 0x5;
 				break;
+			case EVENT_FRAME_GECKO_LIST:;
+				event_size = 1;
+				do {
+					event_size += 0x204;
+					if (p[offset + event_size] == 1) break;
+				}
 			default:;
 				printf("failed at %ld: %X\n", offset, type);
 				event_size = 0;
@@ -117,7 +123,7 @@ int process_raw_data(void *ptr, size_t len)
 	return 0;
 
 	fail:;
-		DBG(printf("raw operation failed due to bullshit\n"););
+		DBG(printf("raw operation failed\n"););
 		free_elements(elemlistp);
 		return (0);
 }
@@ -206,6 +212,8 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 	gamestartp->random_seed = (uint32_t)ntohl(ibp->random_seed);
 	gamestartp->pal = (bool_t)ibp->pal;
 	gamestartp->frozen_ps = (bool_t)ibp->frozen_ps;
+	gamestartp->minor_scene = ibp->minor_scene;
+	gamestartp->major_scene = ibp->major_scene;
 
 	gameinfoblockp->game_bitfield_1 = ibp->game_bitfield_1;
 	gameinfoblockp->game_bitfield_2 = ibp->game_bitfield_2;
@@ -239,7 +247,10 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 		}
 		return 0x1A2;
 	}
-	return 0x1a3;
+	if (version[0] == 3 && version[1] < 7) {
+		return 0x1A3;
+	}
+	return 0x1A5;
 
 	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
 		DBG(printf("malloc failed\n"););
