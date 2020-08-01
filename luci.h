@@ -73,13 +73,15 @@ element_t *find_element_by_name(element_t *listp, char *namep);
 #define PORT_COUNT			4
 #define NAMETAG_LENGTH	8
 #define CHAR_COUNT			2
+#define MAX_FRAMES			28800 // 8*60*60
+#define FIRST_FRAME			-123
 
 
 
 typedef struct GAME_START game_start_t;
 typedef struct GAME_START_PORT game_start_port_t;
 typedef struct GAME_INFO_BLOCK game_info_block_t; // technically a uint8[312], but struct makes it far more clear what everything is, + can be passed into python as an object
-typedef struct GAME_INFO_BLOCK_PORT game_info_block_port_t; // technically a uint8[312], but struct makes it far more clear what everything is, + can be passed into python as an object
+typedef struct GAME_INFO_BLOCK_PORT game_info_block_port_t;
 
 struct GAME_START {
 	uint8_t version[VERSION_LENGTH];
@@ -331,11 +333,10 @@ typedef struct FRAME_OBJ frame_obj_t;
 struct FRAME_OBJ {
 	struct {
 		struct {
-			pre_frame_update_t *preframep;
-			post_frame_update_t *postframep;
+			pre_frame_update_t preframe;
+			post_frame_update_t postframe;
 		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL pointers if no follower
 	} ports[PORT_COUNT]; // NULL value if no player on port
-	frame_obj_t *nextp;
 };
 
 
@@ -344,6 +345,6 @@ typedef struct GAME_OBJ game_obj_t;
 
 struct GAME_OBJ {
 	game_start_t *gamestartp;
-	frame_obj_t *firstframep;
+	frame_obj_t *framearrayp;
 	game_end_t *gameendp;
 };

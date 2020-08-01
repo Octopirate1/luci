@@ -168,12 +168,18 @@ static element_t *process_ubjson_object(void *memp, size_t *offsetp)
 
 		DBG(printf("Object - get name (0x%lx)\n", offset););
 		size_t string_size = process_ubjson_string_name(memp, offset, &(elemp->namep));
-		if (string_size <= 0) goto fail;
+		if (string_size == 0) {
+			DBG(printf("Unable to extract object name - corrupt data file?\n"););
+			goto fail;
+		}
 
 		offset += string_size;
 		DBG(printf("Object - get value (0x%lx)\n", offset););
 		size_t value_size = process_ubjson_value(memp, offset, elemp);
-		if (value_size <=0) goto fail;
+		if (value_size ==0) {
+			DBG(printf("Unable to extract object value - corrupt data file?\n"););
+			goto fail;
+		}
 
 		offset += value_size;
 	} while (true);
@@ -334,7 +340,7 @@ static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *b
 			break;
 		default:
 			DBG(printf("Not an integer type\n"););
-			size = -1;
+			size = 0;
 			value = -1;
 			break;
 	}
@@ -366,7 +372,10 @@ static size_t process_ubjson_string_name(void *memp, size_t offset, char **strpp
 	int64_t value;
 	size_t size = process_ubjson_integer_value(memp, offset, &value);
 
-	if (size<=0) return (0);
+	if (size<=0) {
+		DBG(printf("Unable to extract length of string object name - corrupt data file?\n"););
+		return (0);
+	}
 
 	size_t len = (size_t)value;
 	DBG(printf("String len = %ld\n", len););
