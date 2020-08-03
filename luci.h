@@ -209,6 +209,7 @@ typedef struct __attribute__((__packed__)) GAMEENDFULLBLOCK  {
 typedef struct PRE_FRAME_UPDATE pre_frame_update_t;
 
 struct PRE_FRAME_UPDATE {
+	bool_t valid;
 	int32_t frame_number;
 	uint8_t player_index;
 	bool_t is_follower;

@@ -293,6 +293,7 @@ static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp)
 
 	pre_frame_update_t *preframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].preframe);
 
+	preframep->valid = true;
 	preframep->frame_number = framecount;
 	preframep->player_index = port;
 	preframep->is_follower = (bool_t)char_count;
@@ -384,7 +385,7 @@ static size_t process_item_update(uint8_t *p, frame_obj_t *framearrayp)
 
 	item_update_t *itemupdatep = &(framearrayp[framecount + FIRST_FRAME].itemupdatearray[i]);
 
-	itemupdatep->valid = 1;
+	itemupdatep->valid = true;
 	itemupdatep->frame_number = framecount;
 	itemupdatep->type_id = (uint16_t)ntohs(ibp->type_id);
 	itemupdatep->state = ibp->state;
