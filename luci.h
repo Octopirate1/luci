@@ -380,7 +380,7 @@ struct FRAME_OBJ {
 		struct {
 			pre_frame_update_t preframe;
 			post_frame_update_t postframe;
-		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL values if no follower
+		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL value if no follower
 	} ports[PORT_COUNT]; // NULL values if no player on port
 	item_update_t itemupdatearray[MAX_ITEMS];
 };

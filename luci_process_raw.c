@@ -47,6 +47,12 @@ int process_raw_data(void *ptr, size_t len)
 	if (framearrayp == NULL) goto malloc_fail;
 
 	do {
+
+		if (offset >= len) {
+			DBG(printf("Raw block exceeds expected raw size, program aborting \n"););
+			return 0;
+		}
+
 		type = p[offset];
 		currentp = p + offset;
 
