@@ -176,7 +176,7 @@ static element_t *process_ubjson_object(void *memp, size_t *offsetp)
 		offset += string_size;
 		DBG(printf("Object - get value (0x%lx)\n", offset););
 		size_t value_size = process_ubjson_value(memp, offset, elemp);
-		if (value_size ==0) {
+		if (value_size == 0) {
 			DBG(printf("Unable to extract object value - corrupt data file?\n"););
 			goto fail;
 		}

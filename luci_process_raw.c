@@ -39,7 +39,7 @@ int process_raw_data(void *ptr, size_t len)
 
 	size_t event_size;
 
-	if (framearray == NULL) goto fail;
+	if (framearray == NULL) goto malloc_fail;
 
 	do {
 		type = p[offset];
@@ -51,7 +51,7 @@ int process_raw_data(void *ptr, size_t len)
 				break;
 			case EVENT_GAME_START:;
 				gs_count++;
-				if (gs_count >= 2) goto fail;
+				if (gs_count >= 2) goto count_fail;
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
 				game_obj->gamestartp = gamestartp;
@@ -65,7 +65,7 @@ int process_raw_data(void *ptr, size_t len)
 				break;
 			case EVENT_GAME_END:;
 				ge_count++;
-				if (ge_count >= 2) goto fail;
+				if (ge_count >= 2) goto count_fail;
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
 				game_obj->gameendp = gameendp;
@@ -107,6 +107,16 @@ int process_raw_data(void *ptr, size_t len)
 		DBG(printf("raw operation failed\n"););
 		// free_elements(elemlistp);
 		return (0);
+
+	malloc_fail:;
+		DBG(printf("raw operation failed due to memory failure\n"););
+		// free_elements(elemlistp);
+		return (0);
+
+	count_fail:;
+		DBG(printf("raw operation failed due to game end or start counted twice\n"););
+		// free_elements(elemlistp);
+		return (0);
 }
 
 // utils
@@ -140,6 +150,7 @@ static float ntohf(uint32_t net32)
 
 static size_t process_event(uint8_t *p)
 {
+	if (p[0] != EVENT_PAYLOADS) return (0);
 	for (int i = 0;i < (p[1]-1);i+=3) {
 		switch(p[i + 1]) {
 			case EVENT_GAME_START:;
