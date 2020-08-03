@@ -6,8 +6,8 @@
 #include <assert.h>
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
-static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearray);
-static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearray);
+static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp);
+static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp);
 static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
 static size_t process_event(uint8_t *p);
 typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D, EVENT_MESSAGE_SPLITTER = 0x10 } event_t;
@@ -16,10 +16,12 @@ uint8_t version[4]; // very important for all functions, hence global
 size_t gamestartsize;
 size_t preframesize;
 size_t postframesize;
-size_t itemupdatesize;
 size_t framestartsize;
+size_t itemupdatesize;
 size_t frameendsize;
 size_t gameendsize;
+size_t geckolistsize;
+size_t messagesplitsize;
 
 
 
@@ -33,13 +35,15 @@ int process_raw_data(void *ptr, size_t len)
 	int gs_count = 0;
 	int ge_count = 0;
 
-	frame_obj_t *framearray = (frame_obj_t *)malloc(MAX_FRAMES * sizeof(frame_obj_t)); // first frame object pointer, set null values here
+	frame_obj_t *framearrayp = (frame_obj_t *)malloc(MAX_FRAMES * sizeof(frame_obj_t)); // first frame object pointer, set null values here
+
+	DBG(printf("size of frames_obj: %lu, size of frames array: %lu \n", sizeof(frame_obj_t) * MAX_FRAMES, sizeof(frame_obj_t));); // make version control
 
 	game_obj_t *game_obj = (game_obj_t *)malloc(sizeof(game_obj_t));
 
 	size_t event_size;
 
-	if (framearray == NULL) goto malloc_fail;
+	if (framearrayp == NULL) goto malloc_fail;
 
 	do {
 		type = p[offset];
@@ -56,12 +60,15 @@ int process_raw_data(void *ptr, size_t len)
 				event_size = process_game_start(currentp, gamestartp);
 				game_obj->gamestartp = gamestartp;
 				printf("version: %d.%d.%d \n", version[0], version[1], version[2]); // make version control
+				// printf("0 %d \n", event_size);
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
-				event_size = process_pre_frame_update(currentp, framearray);
+				event_size = process_pre_frame_update(currentp, framearrayp);
+				// printf("1");
 				break;
 			case EVENT_POST_FRAME_UPDATE:;
-				event_size = process_post_frame_update(currentp, framearray);
+				event_size = process_post_frame_update(currentp, framearrayp);
+				// printf("2");
 				break;
 			case EVENT_GAME_END:;
 				ge_count++;
@@ -69,19 +76,20 @@ int process_raw_data(void *ptr, size_t len)
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
 				game_obj->gameendp = gameendp;
+				// printf("3");
 				goto success;
 				break;
 			case EVENT_FRAME_START:;
-				event_size = 0x9;
+				event_size = framestartsize;
 				break;
 			case EVENT_ITEM_UPDATE:;
-				event_size = 0x29; // no
+				event_size = itemupdatesize; // no
 				break;
 			case EVENT_FRAME_BOOKEND:;
-				event_size = 0x9;
+				event_size = frameendsize;
 				break;
 			case EVENT_MESSAGE_SPLITTER:;
-				event_size = 0x205;
+				event_size = messagesplitsize;
 				break;
 			default:;
 				printf("failed at %lx: %X\n", offset, type);
@@ -105,18 +113,17 @@ int process_raw_data(void *ptr, size_t len)
 
 	fail:;
 		DBG(printf("raw operation failed\n"););
+		DBG(fflush(stdout););
 		// free_elements(elemlistp);
 		return (0);
 
 	malloc_fail:;
-		DBG(printf("raw operation failed due to memory failure\n"););
-		// free_elements(elemlistp);
-		return (0);
+		DBG(printf("memory allocation failure\n"););
+		goto fail;
 
 	count_fail:;
-		DBG(printf("raw operation failed due to game end or start counted twice\n"););
-		// free_elements(elemlistp);
-		return (0);
+		DBG(printf("game end or start counted twice\n"););
+		goto fail;
 }
 
 // utils
@@ -151,29 +158,41 @@ static float ntohf(uint32_t net32)
 static size_t process_event(uint8_t *p)
 {
 	if (p[0] != EVENT_PAYLOADS) return (0);
-	for (int i = 0;i < (p[1]-1);i+=3) {
-		switch(p[i + 1]) {
+	for (int i = 2;i < p[1];i+=3) {
+		uint16_t *sizep = &(p[i + 1]);
+		size_t payloadsize = (size_t)ntohs(*sizep) + 1;
+		DBG(printf("event_type: %x, size: %lx \n", p[i], payloadsize););
+		switch(p[i]) {
 			case EVENT_GAME_START:;
-				gamestartsize = (size_t)ntohs(p[2 + i]);
+				gamestartsize = payloadsize;
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
-				preframesize = (size_t)ntohs(p[2 + i]);
+				preframesize = payloadsize;
 				break;
 			case EVENT_POST_FRAME_UPDATE:;
-				postframesize = (size_t)ntohs(p[2 + i]);
+				postframesize = payloadsize;
 				break;
 			case EVENT_ITEM_UPDATE:;
-				itemupdatesize = (size_t)ntohs(p[2 + i]);
+				itemupdatesize = payloadsize;
 				break;
 			case EVENT_FRAME_START:;
-				framestartsize = (size_t)ntohs(p[2 + i]);
+				framestartsize = payloadsize;
 				break;
 			case EVENT_FRAME_BOOKEND:;
-				frameendsize = (size_t)ntohs(p[2 + i]);
+				frameendsize = payloadsize;
 				break;
 			case EVENT_GAME_END:;
-				gameendsize = (size_t)ntohs(p[2 + i]);
+				gameendsize = payloadsize;
 				break;
+			case EVENT_GECKO_LIST:;
+				geckolistsize = payloadsize;
+				break;
+			case EVENT_MESSAGE_SPLITTER:;
+				messagesplitsize = payloadsize;;
+				break;
+			default:;
+				printf("undocumented command byte in payload event payload \n");
+				return 0;
 		}
 	}
 	return (p[1]+1);
@@ -262,7 +281,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 
 
 
-static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearray)
+static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp)
 {
 	prefifullblock_t *ibp = (prefifullblock_t *)p;
 	if (ibp->event_type != EVENT_PRE_FRAME_UPDATE) return (0);
@@ -271,7 +290,7 @@ static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearray)
 	uint8_t port = ibp->player_index;
 	uint8_t char_count = ibp->is_follower;
 
-	pre_frame_update_t *preframep = &(framearray[framecount].ports[port].char_frames[char_count].preframe);
+	pre_frame_update_t *preframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].preframe);
 
 	preframep->frame_number = framecount;
 	preframep->player_index = port;
@@ -298,7 +317,7 @@ static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearray)
 
 
 
-static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearray)
+static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp)
 {
 	postfifullblock_t *ibp = (postfifullblock_t *)p;
 	if (ibp->event_type != EVENT_POST_FRAME_UPDATE) return (0);
@@ -307,7 +326,9 @@ static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearray)
 	uint8_t port = ibp->player_index;
 	uint8_t char_count = ibp->is_follower;
 
-	post_frame_update_t *postframep = &(framearray[framecount].ports[port].char_frames[char_count].postframe);
+	if (framecount + FIRST_FRAME >= MAX_FRAMES) return (0);
+
+	post_frame_update_t *postframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].postframe);
 
 	postframep->frame_number = framecount;
 	postframep->player_index = port;

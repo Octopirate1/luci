@@ -1,4 +1,4 @@
-CC=/usr/bin/afl-gcc # for fuzzing with "afl-fuzz -i test/ -o results/ ./luci @@"
+# CC=/usr/bin/afl-gcc # for fuzzing with "afl-fuzz -i test/ -o results/ ./luci @@"
 SRCS=luciexample.c luci.c luci_process_raw.c luci_element_array.c
 DEPS=luci.h
 OBJS=$(SRCS:.c=.o)

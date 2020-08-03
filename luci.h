@@ -73,8 +73,8 @@ element_t *find_element_by_name(element_t *listp, char *namep);
 #define PORT_COUNT			4
 #define NAMETAG_LENGTH	8
 #define CHAR_COUNT			2
-#define MAX_FRAMES			28800 // 8*60*60
-#define FIRST_FRAME			-123
+#define MAX_FRAMES			28800 // 8 minutes*60 seconds*60 frames. Don't need to worry about rollback frames as we overwrite them.
+#define FIRST_FRAME			123
 
 
 
