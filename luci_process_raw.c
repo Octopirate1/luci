@@ -9,6 +9,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
 static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp);
 static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp);
 static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
+static size_t process_item_update(uint8_t *p, frame_obj_t *framearrayp);
 static size_t process_event(uint8_t *p);
 typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D, EVENT_MESSAGE_SPLITTER = 0x10 } event_t;
 uint8_t version[4]; // very important for all functions, hence global
@@ -35,9 +36,9 @@ int process_raw_data(void *ptr, size_t len)
 	int gs_count = 0;
 	int ge_count = 0;
 
-	frame_obj_t *framearrayp = (frame_obj_t *)malloc(MAX_FRAMES * sizeof(frame_obj_t)); // first frame object pointer, set null values here
+	frame_obj_t *framearrayp = (frame_obj_t *)calloc(MAX_FRAMES, sizeof(frame_obj_t)); // null values here are very important
 
-	DBG(printf("size of frames_obj: %lu, size of frames array: %lu \n", sizeof(frame_obj_t) * MAX_FRAMES, sizeof(frame_obj_t));); // make version control
+	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", sizeof(frame_obj_t) * MAX_FRAMES, sizeof(frame_obj_t));); // make version control
 
 	game_obj_t *game_obj = (game_obj_t *)malloc(sizeof(game_obj_t));
 
@@ -83,7 +84,7 @@ int process_raw_data(void *ptr, size_t len)
 				event_size = framestartsize;
 				break;
 			case EVENT_ITEM_UPDATE:;
-				event_size = itemupdatesize; // no
+				event_size = process_item_update(currentp, framearrayp);
 				break;
 			case EVENT_FRAME_BOOKEND:;
 				event_size = frameendsize;
@@ -364,6 +365,45 @@ static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp)
 
 
 	return postframesize;
+}
+
+
+
+static size_t process_item_update(uint8_t *p, frame_obj_t *framearrayp)
+{
+	itemupdatefullinfoblock_t *ibp = (itemupdatefullinfoblock_t *)p;
+	if (ibp->event_type != EVENT_POST_FRAME_UPDATE) return (0);
+
+	int32_t framecount = (int32_t)ntohl(ibp->frame_number);
+
+	if (framecount + FIRST_FRAME >= MAX_FRAMES) return (0);
+
+	int i;
+
+	for (i = 0;i < MAX_ITEMS;i++) if (framearrayp[framecount + FIRST_FRAME].itemupdatearray[i].valid == 0) break;
+
+	item_update_t *itemupdatep = &(framearrayp[framecount + FIRST_FRAME].itemupdatearray[i]);
+
+	itemupdatep->valid = 1;
+	itemupdatep->frame_number = framecount;
+	itemupdatep->type_id = (uint16_t)ntohs(ibp->type_id);
+	itemupdatep->state = ibp->state;
+	itemupdatep->facing_direction = ntohf(ibp->facing_direction);
+	itemupdatep->x_position = ntohf(ibp->x_position);
+	itemupdatep->y_position = ntohf(ibp->y_position);
+	itemupdatep->x_velocity = ntohf(ibp->x_velocity);
+	itemupdatep->y_velocity = ntohf(ibp->y_velocity);
+	itemupdatep->damage_taken = (uint16_t)ntohs(ibp->damage_taken);
+	itemupdatep->expiration_timer = ntohf(ibp->expiration_timer);
+	itemupdatep->spawn_id = (uint32_t)ntohl(ibp->spawn_id);
+	itemupdatep->misc_1 = ibp->misc_1;
+	itemupdatep->misc_2 = ibp->misc_2;
+	itemupdatep->misc_3 = ibp->misc_3;
+	itemupdatep->misc_4 = ibp->misc_4;
+	itemupdatep->owner = ibp->owner;
+
+
+	return itemupdatesize;
 }
 
 

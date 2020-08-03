@@ -75,6 +75,7 @@ element_t *find_element_by_name(element_t *listp, char *namep);
 #define CHAR_COUNT			2
 #define MAX_FRAMES			28800 // 8 minutes*60 seconds*60 frames. Don't need to worry about rollback frames as we overwrite them.
 #define FIRST_FRAME			123
+#define MAX_ITEMS				15
 
 
 
@@ -328,6 +329,49 @@ typedef struct __attribute__((__packed__)) POSTFIFULLBLOCK  {
 
 
 
+typedef struct ITEM_UPDATE item_update_t;
+
+struct ITEM_UPDATE {
+	bool_t valid;
+	int32_t frame_number;
+	uint16_t type_id;
+	uint8_t state;
+	float_t facing_direction;
+	float_t x_velocity;
+	float_t y_velocity;
+	float_t x_position;
+	float_t y_position;
+	uint16_t damage_taken;
+	float_t expiration_timer;
+	uint32_t spawn_id;
+	uint8_t misc_1;
+	uint8_t misc_2;
+	uint8_t misc_3;
+	uint8_t misc_4;
+	int8_t owner;
+};
+
+typedef struct __attribute__((__packed__)) ITEMUPDATEFULLINFOBLOCK  {
+	uint8_t event_type;	// offset 0x0
+	int32_t frame_number; // 0x1
+	uint16_t type_id; // 0x5
+	uint8_t state; // 0x7
+	uint32_t facing_direction; // 0x8
+	uint32_t x_velocity; // 0xC
+	uint32_t y_velocity; // 0x10
+	uint32_t x_position; // 0x14
+	uint32_t y_position; // 0x18
+	uint16_t damage_taken; // 0x1C
+	uint32_t expiration_timer; // 0x1E
+	uint32_t spawn_id; // 0x22
+	uint8_t misc_1; // 0x23
+	uint8_t misc_2; // 0x24
+	uint8_t misc_3; // 0x25
+	uint8_t _pad0; // 0x26
+	uint8_t misc_4; // 0x27
+	int8_t owner; // 0x28
+} itemupdatefullinfoblock_t;
+
 typedef struct FRAME_OBJ frame_obj_t;
 
 struct FRAME_OBJ {
@@ -335,8 +379,9 @@ struct FRAME_OBJ {
 		struct {
 			pre_frame_update_t preframe;
 			post_frame_update_t postframe;
-		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL pointers if no follower
-	} ports[PORT_COUNT]; // NULL value if no player on port
+		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL values if no follower
+	} ports[PORT_COUNT]; // NULL values if no player on port
+	item_update_t itemupdatearray[MAX_ITEMS];
 };
 
 
