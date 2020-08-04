@@ -43,7 +43,7 @@ static size_t process_ubjson_noop(void *memp, size_t offset);
 static size_t process_ubjson_string_name(void *memp, size_t offset, char **strpp);
 static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *bufp);
 
-
+long filelen;
 
 size_t map_and_process(char *filenamep)
 {
@@ -55,7 +55,7 @@ size_t map_and_process(char *filenamep)
 		res = fstat(fh, &sb);
 		if (res >= 0 && (sb.st_mode & S_IFREG)) {
 			ret = sb.st_size;
-			printf("File is %ld bytes\n", (long)ret);
+			filelen = (long)ret;
 
 			void *memp = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fh, 0LL);
 			if (memp != MAP_FAILED) {
@@ -155,6 +155,12 @@ static element_t *process_ubjson_object(void *memp, size_t *offsetp)
 
 	offset ++;
 	do {
+
+		if (offset >= filelen) {
+			printf("file is corrupted, aborting program \n");
+			return 0;
+		}
+
 		type = p[offset];
 
 		if (type == '}') {
@@ -217,6 +223,12 @@ static array_block_t *process_ubjson_array(void *memp, size_t *offsetp)
 	// size_t start_offset = offset;
 	offset ++;
 	while (true) {
+
+		if (offset >= filelen) {
+			printf("file is corrupted, aborting program \n");
+			return 0;
+		}
+
 		type = p[offset];
 
 		switch (type) {
@@ -336,7 +348,7 @@ static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *b
 		case 'L':	DBG(printf("int64\n"););
 			size = 1+8;
 			// value = (int64_t)ntohll(*(int64_t*)p);
-			value = (int64_t)be64toh(*(int64_t*)p);
+			value = (int64_t)be64toh(*(int64_t*)p); //crash2 and crash3 return very high values here, investigate later
 			break;
 		default:
 			DBG(printf("Not an integer type\n"););
