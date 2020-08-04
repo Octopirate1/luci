@@ -166,7 +166,7 @@ static size_t process_event(uint8_t *p)
 {
 	if (p[0] != EVENT_PAYLOADS) return (0);
 	for (int i = 2;i < p[1];i+=3) {
-		uint16_t *sizep = &(p[i + 1]);
+		uint16_t *sizep = (uint16_t *)&(p[i + 1]);
 		size_t payloadsize = (size_t)ntohs(*sizep) + 1;
 		DBG(printf("event_type: %x, size: %lx \n", p[i], payloadsize););
 		switch(p[i]) {
