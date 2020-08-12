@@ -2,6 +2,7 @@ SRCS=luci-metadata.c luci-process.c luci-element.c luci-utils.c
 DEPS=luci.h
 OBJS=$(SRCS:.c=.o)
 TARGET=luci
+LIBDIR=lib
 PRODFLAGS=
 CFLAGS=-DISPYTHON=0 -g -Wall -O0 $(PRODFLAGS)
 
@@ -19,7 +20,7 @@ else
 endif
 
 
-all: $(TARGET)
+all: $(TARGET) 
 
 
 debug:
@@ -31,19 +32,19 @@ profile:
 
 
 libluci.a: $(TARGET)
-		ar rcs lib/$@ $(TARGET)
+		ar rcs $(LIBDIR)/$@ $(TARGET)
 
 
 libluci.so: $(TARGET)
-		$(CC) -shared $(OBJS) -o lib/$@
+		$(CC) -shared $(OBJS) -o $(LIBDIR)/$@
 
 
 example: libluci.so
-		$(CC) example.c -Llib -lluci -o $(TARGET)  
+		$(CC) example.c -L$(LIBDIR) -lluci -o $(TARGET)  
 
 
 $(TARGET) : $(OBJS)
-	mkdir -p lib/
+	mkdir -p $(LIBDIR)
 
 clean:
-	rm -rf $(OBJS) $(TARGET) example.o libluci.a libluci.so a.out
+	rm -rf $(OBJS) $(TARGET) example.o $(LIBDIR) a.out
