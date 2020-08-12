@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <arpa/inet.h>
+#include "endianag.h"
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
 static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp);
@@ -98,7 +98,7 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 				event_size = messagesplitsize;
 				break;
 			default:;
-				printf("failed at %lx: %X\n", offset, type);
+				printf("failed at %zu: %X\n", offset, type);
 				event_size = 0;
 				break;
 		}

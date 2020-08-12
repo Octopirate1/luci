@@ -18,6 +18,10 @@ However, the Python interpreter will automatically fall back to gcc if clang is 
 
 To import, use ``import luci``.
 
+Fuzzing:
+====================
+
+Use afl-gcc or alf-clang to complile, then use ``afl-fuzz -i test/ -o results/ ./luci @@``
 
 To test:
 ====================

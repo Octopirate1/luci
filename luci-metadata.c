@@ -7,8 +7,7 @@
 #include <sys/mman.h>
 #include <alloca.h>
 #include <errno.h>
-#include <arpa/inet.h>	// ntohl etc. FIXME
-#include <endian.h> // only for linux
+#include "endianag.h"
 
 #include "luci.h"
 
@@ -72,7 +71,6 @@ static slp_file_t *process_file(void *memp, size_t size)
 
 	size_t offset = 0;
 	game_t *gamep = NULL;
-	bool_t res = false;
 	slp_file_t *slpfilep = (slp_file_t *)malloc(sizeof(slp_file_t));
 
 	element_t *listp = process_ubjson_object(memp, &offset); // begin metadata processing
@@ -89,7 +87,6 @@ static slp_file_t *process_file(void *memp, size_t size)
 			printf("Raw data should be of byte length\n");
 		} else {
 			gamep = process_raw_data(rawp->datap, rawp->count, versionctrl); // where the real magic happens
-			res = true;
 		}
 	}
 
@@ -311,8 +308,8 @@ static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *b
 			break;
 		case 'L':	DBG(printf("int64\n"););
 			size = 1+8;
-			// value = (int64_t)ntohll(*(int64_t*)p);
-			value = (int64_t)be64toh(*(int64_t*)p); //crash2 and crash3 return very high values here, investigate later
+			value = (int64_t)ntohll(*(int64_t*)p);
+			// value = (int64_t)be64toh(*(int64_t*)p); //crash2 and crash3 return very high values here, investigate later
 			break;
 		default:
 			DBG(printf("Not an integer type\n"););

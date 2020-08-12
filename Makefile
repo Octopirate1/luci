@@ -1,10 +1,21 @@
-# CC=/usr/bin/afl-gcc # for fuzzing with "afl-fuzz -i test/ -o results/ ./luci @@"
 SRCS=example.c luci-metadata.c luci-process.c luci-element.c luci-utils.c
 DEPS=luci.h
 OBJS=$(SRCS:.c=.o)
 TARGET=luci
 PRODFLAGS=
 CFLAGS=-DISPYTHON=0 -g -Wall -O0 $(PRODFLAGS)
+
+ifeq ($(OS),Windows_NT) # Compiler-agnostic OS info
+	PRODFLAGS += -D WIN32
+else
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Linux)
+        	PRODFLAGS += -D LINUX
+	endif
+	ifeq ($(UNAME_S),Darwin)
+       		PRODFLAGS += -D OSX
+	endif
+endif
 
 all: $(TARGET)
 
@@ -13,9 +24,6 @@ debug:
 
 profile:
 		$(MAKE) PRODFLAGS=-pg all
-
-fuzz: CC=/usr/local/bin/afl-clang
-fuzz: $(TARGET)
 
 $(TARGET) : $(OBJS)
 	$(CC) -o $(TARGET) $^

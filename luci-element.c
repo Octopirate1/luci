@@ -90,13 +90,13 @@ void element_dump(element_t *elemp, int indent)
 		printf("\"%s\"", elemp->u.stringp);
 		break;
 	case ET_Int:
-		printf("%ld", elemp->u.integer_value);
+		printf("%lld", elemp->u.integer_value);
 		break;
 	case ET_Float:
 		printf("%lf", elemp->u.float_value);
 		break;
 	case ET_Array:
-		printf("[%ld of size 0x%ld at %p]",
+		printf("[%zu of size 0x%zu at %p]",
 			elemp->u.arrayp->count,
 			elemp->u.arrayp->size,
 			elemp->u.arrayp->datap);
