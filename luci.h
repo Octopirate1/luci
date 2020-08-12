@@ -7,9 +7,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-size_t map_and_process(char *filenamep);
-int process_raw_data(void *ptr, size_t len); // change to pointer to game object return type
+size_t map_and_process(char *filenamep, int *version);
+int process_raw_data(void *ptr, size_t len, int versionctrl[]); // change to pointer to game object return type
 
+float ntohf(uint32_t net32);
 
 #ifdef DEBUG
 #define LUCI_DEBUG 1

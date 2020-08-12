@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <assert.h>
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
 static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp);
@@ -26,7 +25,7 @@ size_t messagesplitsize;
 
 
 
-int process_raw_data(void *ptr, size_t len)
+int process_raw_data(void *ptr, size_t len, int versionctrl[])
 {
 	uint8_t *p = (uint8_t*)ptr;
 	uint8_t *currentp = p;
@@ -38,7 +37,7 @@ int process_raw_data(void *ptr, size_t len)
 
 	frame_obj_t *framearrayp = (frame_obj_t *)calloc(MAX_FRAMES, sizeof(frame_obj_t)); // null values here are very important
 
-	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", sizeof(frame_obj_t) * MAX_FRAMES, sizeof(frame_obj_t));); // make version control
+	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", sizeof(frame_obj_t) * MAX_FRAMES, sizeof(frame_obj_t)););
 
 	game_obj_t *game_obj = (game_obj_t *)malloc(sizeof(game_obj_t));
 
@@ -66,16 +65,14 @@ int process_raw_data(void *ptr, size_t len)
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
 				game_obj->gamestartp = gamestartp;
-				printf("version: %d.%d.%d \n", version[0], version[1], version[2]); // make version control
-				// printf("0 %d \n", event_size);
+				printf("version: %d.%d.%d \n", version[0], version[1], version[2]);
+				if (version[0] < versionctrl[0] || (version[0] == versionctrl[0] && version[1] < versionctrl[1]) || (version[0] == versionctrl[0] && version[1] == versionctrl[1] && version[2] < versionctrl[2])) fprintf(stderr, "Version of file is below version specified\n");
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
 				event_size = process_pre_frame_update(currentp, framearrayp);
-				// printf("1");
 				break;
 			case EVENT_POST_FRAME_UPDATE:;
 				event_size = process_post_frame_update(currentp, framearrayp);
-				// printf("2");
 				break;
 			case EVENT_GAME_END:;
 				ge_count++;
@@ -83,7 +80,6 @@ int process_raw_data(void *ptr, size_t len)
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
 				game_obj->gameendp = gameendp;
-				// printf("3");
 				goto success;
 				break;
 			case EVENT_FRAME_START:;
@@ -104,9 +100,6 @@ int process_raw_data(void *ptr, size_t len)
 				break;
 		}
 
-		// if (last_frame == -123) {
-		// 	game_obj->frames = framep;
-		// }
 
 		if (event_size <= 0) goto fail;
 
@@ -121,7 +114,6 @@ int process_raw_data(void *ptr, size_t len)
 	fail:;
 		DBG(printf("raw operation failed\n"););
 		DBG(fflush(stdout););
-		// free_elements(elemlistp);
 		return (0);
 
 	malloc_fail:;
@@ -132,33 +124,6 @@ int process_raw_data(void *ptr, size_t len)
 		DBG(printf("game end or start counted twice\n"););
 		goto fail;
 }
-
-// utils
-
-// static int count_chars(game_info_block_port_t *ports[PORT_COUNT])
-// {
-// 	int char_count = 0;
-// 	for (int i = 0;i < PORT_COUNT;i++){
-// 		if (ports[i]->player_type != 3) {
-// 			if (ports[i]->extern_char_id == 0x0E) {char_count += 2;} else {char_count += 1;}
-// 		}
-// 	}
-// 	return char_count;
-// }
-
-static float ntohf(uint32_t net32)
-{
-    union {
-        float f;
-        uint32_t u;
-    } value;
-
-    value.u = ntohl(net32);
-
-    return value.f;
-}
-
-// process functions
 
 
 
@@ -195,7 +160,7 @@ static size_t process_event(uint8_t *p)
 				geckolistsize = payloadsize;
 				break;
 			case EVENT_MESSAGE_SPLITTER:;
-				messagesplitsize = payloadsize;;
+				messagesplitsize = payloadsize;
 				break;
 			default:;
 				printf("undocumented command byte in payload event payload \n");
@@ -215,18 +180,12 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 
 	game_info_block_t *gameinfoblockp = (game_info_block_t*)malloc(sizeof(game_info_block_t));
 
-	//game_start_port_t *gamestartportp[PORT_COUNT];
-	// game_info_block_port_t *gameibportp[PORT_COUNT];
-	// assert(gamestartp != NULL);
-	// assert(gameinfoblockp != NULL);
 	if (gamestartp == NULL || gameinfoblockp == NULL) goto malloc_fail;
 
 	for(int i = 0;i<PORT_COUNT;i++){
 		game_info_block_port_t *gip = (game_info_block_port_t*)malloc(sizeof(game_info_block_port_t));
 		game_start_port_t *gsp = (game_start_port_t*)malloc(sizeof(game_start_port_t));
 
-		// assert(gip != NULL);
-		// assert(gsp != NULL);
 		if (gip == NULL || gsp == NULL) goto malloc_fail;
 
 		gsp->dashback_fix = (uint32_t)ntohl(ibp->gsb_port[i].dashback_fix);
@@ -242,7 +201,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 		gip->team_id = ibp->gib_port[i].team_id;
 		gip->player_bitfield = ibp->gib_port[i].player_bitfield;
 		gip->cpu_level = ibp->gib_port[i].cpu_level;
-		gip->offense_ratio = ntohf(ibp->gib_port[i].offense_ratio); // FLOATS!! AAAAARGHHH have to do bs ntohf or smth
+		gip->offense_ratio = ntohf(ibp->gib_port[i].offense_ratio);
 		gip->defense_ratio = ntohf(ibp->gib_port[i].defense_ratio);
 		gip->model_scale = ntohf(ibp->gib_port[i].model_scale);
 
@@ -250,7 +209,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 		gamestartp->ports[i] = gsp;
 	};
 
-	memcpy(gamestartp->version, ibp->version, VERSION_LENGTH); // don't need to byte flip bc uint8 so no for loop lulz
+	memcpy(gamestartp->version, ibp->version, VERSION_LENGTH);
 	gamestartp->game_info_block = gameinfoblockp;
 	gamestartp->random_seed = (uint32_t)ntohl(ibp->random_seed);
 	gamestartp->pal = (bool_t)ibp->pal;
@@ -271,18 +230,14 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 	gameinfoblockp->item_spawn_bitfield_3 = ibp->item_spawn_bitfield_3;
 	gameinfoblockp->item_spawn_bitfield_4 = ibp->item_spawn_bitfield_4;
 	gameinfoblockp->item_spawn_bitfield_5 = ibp->item_spawn_bitfield_5;
-	gameinfoblockp->damage_ratio = ntohf(ibp->damage_ratio); //ntohf
-//	printf("%p, %p, %p, %p \n", gameibportp[0], gameibportp[1], gameibportp[2], gameinfoblockp->ports[3]);
-
-	// printf("Offset for pal = %p\n", &(((gsfullblock_t*)0)->pal)); // oll korrect
+	gameinfoblockp->damage_ratio = ntohf(ibp->damage_ratio);
 
 	memcpy(&version, &gamestartp->version, sizeof(gamestartp->version)); // set global version
 
 	return gamestartsize;
 
-	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
+	malloc_fail:;
 		DBG(printf("malloc failed\n"););
-		// free_elements(elemlistp);
 		return (0);
 }
 
@@ -415,7 +370,7 @@ static size_t process_item_update(uint8_t *p, frame_obj_t *framearrayp)
 
 
 
-static size_t process_game_end(uint8_t *p, game_end_t *gameendp) // making a function for this is silly? no u
+static size_t process_game_end(uint8_t *p, game_end_t *gameendp)
 {
 	gameendfullblock_t *ibp = (gameendfullblock_t *)p;
 	if (ibp->event_type != EVENT_GAME_END) return (0);
@@ -427,8 +382,7 @@ static size_t process_game_end(uint8_t *p, game_end_t *gameendp) // making a fun
 
 	return gameendsize;
 
-	malloc_fail:; //we have to allocate quite a bit of heap so this goto is useful here for oneline if statements
+	malloc_fail:;
 		DBG(printf("malloc failed\n"););
-		// free_elements(elemlistp);
 		return (0);
 }

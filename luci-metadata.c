@@ -20,21 +20,9 @@
 	//
 
 
-
-// static element_t *new_element();
-// static array_block_t *new_array_block(void *memp, size_t count, size_t size);
-// static element_t *add_element(element_t *listp, element_t *newp);
-//static void element_list_dump(element_t *listp);
-// static void element_list_recurse(element_t *listp, int indent);
-//static void element_dump(element_t *elemp, int indent);
-//static void free_elements(element_t *listp);
-// static element_t *find_element_by_name(element_t *listp, char *namep);
-
-
 static bool_t process_file(void *memp, size_t size);	// returns false on error
 static size_t process_ubjson_value(void *memp, size_t offset, element_t *elemp);
 static size_t process_ubjson_string(void *memp, size_t offset, char **strpp);
-//static size_t process_number(void *memp, size_t offset);
 static element_t *process_ubjson_object(void *memp, size_t *offsetp);
 static array_block_t *process_ubjson_array(void *memp, size_t *offsetp);
 static size_t process_ubjson_true(void *memp, size_t offset);
@@ -43,10 +31,12 @@ static size_t process_ubjson_noop(void *memp, size_t offset);
 static size_t process_ubjson_string_name(void *memp, size_t offset, char **strpp);
 static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *bufp);
 
-long filelen;
+size_t filelen;
+int versionctrl[3];
 
-size_t map_and_process(char *filenamep)
+size_t map_and_process(char *filenamep, int *version)
 {
+	memcpy(&versionctrl, version, VERSION_LENGTH-1);
 	size_t ret = 0;
 	struct stat sb;
 	int res;
@@ -55,7 +45,7 @@ size_t map_and_process(char *filenamep)
 		res = fstat(fh, &sb);
 		if (res >= 0 && (sb.st_mode & S_IFREG)) {
 			ret = sb.st_size;
-			filelen = (long)ret;
+			filelen = (size_t)ret;
 
 			void *memp = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fh, 0LL);
 			if (memp != MAP_FAILED) {
@@ -76,39 +66,8 @@ size_t map_and_process(char *filenamep)
 
 
 
-#if LUCI_DEBUG	// {
-
-void dump_mem(void *memp, size_t offset, int len)
-{
-	uint8_t *p = memp;
-	p += offset;
-
-	for (int i = 0; i<len; i+=16) {
-		printf("%08lx :", offset+i);
-		char output[17];
-		output[16]='\0';
-		for (int j=0; j<16; j++) {
-			int ch = p[i+j];
-			printf(" %02x", ch);
-			output[j] = (ch>=21 && ch<127) ? ch : '.';
-		}
-		printf(" : %s\n", output);
-	}
-}
-
-#endif	// }
-
-
-	//
-	// returns false on error
-	//
 static bool_t process_file(void *memp, size_t size)
 {
-#if LUCI_DEBUG
-//	dump_mem(memp, 0L, 64);
-//	printf("\n");
-//	dump_mem(memp, 0x2b4240L, 64);
-#endif
 
 	size_t offset = 0;
 	bool_t res = false;
@@ -126,7 +85,7 @@ static bool_t process_file(void *memp, size_t size)
 		if (rawp->size != 1) {
 			printf("Discrepancy raw data should be of byte length\n");
 		} else {
-			process_raw_data(rawp->datap, rawp->count);
+			process_raw_data(rawp->datap, rawp->count, versionctrl);
 			res = true;
 		}
 	}
