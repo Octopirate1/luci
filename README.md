@@ -1,29 +1,24 @@
-C instructions coming soon.
+Important notes about luci:
+- Luci, no matter what version the file is, will return values in the structs that correspond to the latest version instead of quitting the program (if no version is specified). This means that a ``0.1.0`` file will generate a struct that has information that would normally only be accessible from a file of a higher version - however, this data will all be garbage passed on from the next frame. This is why it is so important to pass a version variable to ``map_and_process``, to make sure that luci will quit instead of returning garbage data.
+- The structs returned by luci are nearly 60 MB in size. If memory is a concern, free the variables not needed.
+- Better documentation is coming soon, I promise.
 
-To build and install (python, not working yet)
+C build instructions:
 ====================
+To make libraries, simply run ``make libluci.a`` or ``make libluci.so``. These files will be created in ``lib/``. To build the example file, run ``make example``. This binary will be generated in the source directory as ``luci``, and can be run with ``./luci``. The parsing function is ``map_and_process(char *filenamep, int *versionp)``; this function takes a pointer to a filename and a pointer to a 3 integer version vector (no files can be above this version). The returned type is a ``slp_file_t``, defined in ``luci.h``.
 
-Navigate to the directory containing setup.py and run the following command:
 
-``$ python3 setup.py install``
-
-This command will compile and install your Python C extension module in the current directory. If there are any errors or warnings, then your program will throw them now. Make sure you fix these before you try to import your module.
-
-By default, the Python interpreter uses clang for compiling the C code. If you want to use gcc or any other C compiler for the job, then you need to set the CC environment variable accordingly, either inside the setup script or directly on the command line. For instance, you can tell the Python interpreter to use gcc to compile and build your module this way:
+Python build instructions
+====================
 
 ``$ CC=gcc python3 setup.py install``
 
-However, the Python interpreter will automatically fall back to gcc if clang is not available.
-
-
 To import, use ``import luci``.
 
-Fuzzing:
+**This currently does not work; functionality coming soon (along with node.js)**
+
+Fuzzing
 ====================
 
-Use afl-gcc or alf-clang to complile, then use ``afl-fuzz -i test/ -o results/ ./luci @@``
+Use afl-gcc or afl-clang to complile, then use ``afl-fuzz -i test/ -o results/ ./luci @@``
 
-To test:
-====================
-
-``$ pytest -q``

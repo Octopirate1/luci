@@ -33,9 +33,9 @@ static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *b
 size_t filelen;
 int versionctrl[3];
 
-slp_file_t *map_and_process(char *filenamep, int *version)
+slp_file_t *map_and_process(char *filenamep, int *versionp)
 {
-	memcpy(&versionctrl, version, sizeof(int)*(VERSION_LENGTH-1));
+	memcpy(&versionctrl, versionp, sizeof(int)*(VERSION_LENGTH-1));
 	slp_file_t *slpfilep = NULL;
 	size_t ret = 0;
 	struct stat sb;
