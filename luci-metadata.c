@@ -20,7 +20,7 @@
 	//
 
 
-static bool_t process_file(void *memp, size_t size);	// returns false on error
+static slp_file_t *process_file(void *memp, size_t size);	// returns false on error
 static size_t process_ubjson_value(void *memp, size_t offset, element_t *elemp);
 static size_t process_ubjson_string(void *memp, size_t offset, char **strpp);
 static element_t *process_ubjson_object(void *memp, size_t *offsetp);
@@ -34,9 +34,10 @@ static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *b
 size_t filelen;
 int versionctrl[3];
 
-size_t map_and_process(char *filenamep, int *version)
+slp_file_t *map_and_process(char *filenamep, int *version)
 {
-	memcpy(&versionctrl, version, VERSION_LENGTH-1);
+	memcpy(&versionctrl, version, sizeof(int)*(VERSION_LENGTH-1));
+	slp_file_t *slpfilep = NULL;
 	size_t ret = 0;
 	struct stat sb;
 	int res;
@@ -49,7 +50,7 @@ size_t map_and_process(char *filenamep, int *version)
 
 			void *memp = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fh, 0LL);
 			if (memp != MAP_FAILED) {
-				(void)process_file(memp, sb.st_size);
+				slpfilep = process_file(memp, sb.st_size);
 			} else {
 				res = -1;
 			}
@@ -61,20 +62,22 @@ size_t map_and_process(char *filenamep, int *version)
 	}
 	close(fh);
 
-	return (ret);
+	return slpfilep;
 }
 
 
 
-static bool_t process_file(void *memp, size_t size)
+static slp_file_t *process_file(void *memp, size_t size)
 {
 
 	size_t offset = 0;
+	game_t *gamep = NULL;
 	bool_t res = false;
+	slp_file_t *slpfilep = (slp_file_t *)malloc(sizeof(slp_file_t));
 
-	element_t *listp = process_ubjson_object(memp, &offset);
+	element_t *listp = process_ubjson_object(memp, &offset); // begin metadata processing
 
-	element_list_dump(listp);
+	DBG(element_list_dump(listp););
 
 	fflush(stdout);
 	element_t *raw_datap = find_element_by_name(listp, "raw");
@@ -83,15 +86,17 @@ static bool_t process_file(void *memp, size_t size)
 	} else {
 		array_block_t *rawp = raw_datap->u.arrayp;
 		if (rawp->size != 1) {
-			printf("Discrepancy raw data should be of byte length\n");
+			printf("Raw data should be of byte length\n");
 		} else {
-			process_raw_data(rawp->datap, rawp->count, versionctrl);
+			gamep = process_raw_data(rawp->datap, rawp->count, versionctrl); // where the real magic happens
 			res = true;
 		}
 	}
 
-	free_elements(listp);
-	return (res);
+	slpfilep->gamep = gamep;
+	slpfilep->metadatap = listp;
+
+	return slpfilep;
 }
 
 

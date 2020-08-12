@@ -7,15 +7,18 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-size_t map_and_process(char *filenamep, int *version);
-int process_raw_data(void *ptr, size_t len, int versionctrl[]); // change to pointer to game object return type
+
+typedef struct GAME game_t;
+typedef struct SLP_FILE slp_file_t;
+
+slp_file_t *map_and_process(char *filenamep, int *version);
+game_t *process_raw_data(void *ptr, size_t len, int versionctrl[]);
 
 float ntohf(uint32_t net32);
 
 #ifdef DEBUG
 #define LUCI_DEBUG 1
 #define	DBG(s)	do { s } while (0)
-void dump_mem(void *memp, size_t offset, int len);
 #else
 #define LUCI_DEBUG	0
 #define	DBG(s)	do { } while (0)
@@ -374,9 +377,9 @@ typedef struct __attribute__((__packed__)) ITEMUPDATEFULLINFOBLOCK  {
 	int8_t owner; // 0x28
 } itemupdatefullinfoblock_t;
 
-typedef struct FRAME_OBJ frame_obj_t;
+typedef struct FRAME frame_t;
 
-struct FRAME_OBJ {
+struct FRAME {
 	struct {
 		struct {
 			pre_frame_update_t preframe;
@@ -388,10 +391,16 @@ struct FRAME_OBJ {
 
 
 
-typedef struct GAME_OBJ game_obj_t;
-
-struct GAME_OBJ {
+struct GAME {
 	game_start_t *gamestartp;
-	frame_obj_t *framearrayp;
+	frame_t *framearrayp;
 	game_end_t *gameendp;
 };
+
+
+
+struct SLP_FILE {
+	game_t *gamep;
+	element_t *metadatap;
+};
+

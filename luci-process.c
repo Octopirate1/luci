@@ -5,13 +5,13 @@
 #include <arpa/inet.h>
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
-static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp);
-static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp);
+static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp);
 static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
-static size_t process_item_update(uint8_t *p, frame_obj_t *framearrayp);
+static size_t process_item_update(uint8_t *p, frame_t *framearrayp);
 static size_t process_event(uint8_t *p);
 typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D, EVENT_MESSAGE_SPLITTER = 0x10 } event_t;
-uint8_t version[4]; // very important for all functions, hence global
+uint8_t version[4];
 
 size_t gamestartsize;
 size_t preframesize;
@@ -25,7 +25,7 @@ size_t messagesplitsize;
 
 
 
-int process_raw_data(void *ptr, size_t len, int versionctrl[])
+game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 {
 	uint8_t *p = (uint8_t*)ptr;
 	uint8_t *currentp = p;
@@ -35,11 +35,13 @@ int process_raw_data(void *ptr, size_t len, int versionctrl[])
 	int gs_count = 0;
 	int ge_count = 0;
 
-	frame_obj_t *framearrayp = (frame_obj_t *)calloc(MAX_FRAMES, sizeof(frame_obj_t)); // null values here are very important
+	frame_t *framearrayp = (frame_t *)calloc(MAX_FRAMES, sizeof(frame_t));
 
-	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", sizeof(frame_obj_t) * MAX_FRAMES, sizeof(frame_obj_t)););
+	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", sizeof(frame_t) * MAX_FRAMES, sizeof(frame_t)););
 
-	game_obj_t *game_obj = (game_obj_t *)malloc(sizeof(game_obj_t));
+	game_t *gamep = (game_t *)malloc(sizeof(game_t));
+
+	gamep->framearrayp = framearrayp;
 
 	size_t event_size;
 
@@ -64,9 +66,10 @@ int process_raw_data(void *ptr, size_t len, int versionctrl[])
 				if (gs_count >= 2) goto count_fail;
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
-				game_obj->gamestartp = gamestartp;
-				printf("version: %d.%d.%d \n", version[0], version[1], version[2]);
-				if (version[0] < versionctrl[0] || (version[0] == versionctrl[0] && version[1] < versionctrl[1]) || (version[0] == versionctrl[0] && version[1] == versionctrl[1] && version[2] < versionctrl[2])) fprintf(stderr, "Version of file is below version specified\n");
+				gamep->gamestartp = gamestartp;
+				DBG(printf("version: %d.%d.%d \n", version[0], version[1], version[2]););
+				DBG(printf("versionctrl: %d.%d.%d \n", versionctrl[0], versionctrl[1], versionctrl[2]););
+				if (version[0] < versionctrl[0] || (version[0] == versionctrl[0] && version[1] < versionctrl[1]) || (version[0] == versionctrl[0] && version[1] == versionctrl[1] && version[2] < versionctrl[2])) fprintf(stderr, "Version of file (%d.%d.%d) is below version specified (%d.%d.%d)\n", version[0], version[1], version[2], versionctrl[0], versionctrl[1], versionctrl[2]);
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
 				event_size = process_pre_frame_update(currentp, framearrayp);
@@ -79,7 +82,7 @@ int process_raw_data(void *ptr, size_t len, int versionctrl[])
 				if (ge_count >= 2) goto count_fail;
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
-				game_obj->gameendp = gameendp;
+				gamep->gameendp = gameendp;
 				goto success;
 				break;
 			case EVENT_FRAME_START:;
@@ -109,12 +112,12 @@ int process_raw_data(void *ptr, size_t len, int versionctrl[])
 	success:;
 		DBG(printf("end of object \n"););
 		DBG(fflush(stdout););
-		return 0;
+		return gamep;
 
 	fail:;
 		DBG(printf("raw operation failed\n"););
 		DBG(fflush(stdout););
-		return (0);
+		return (NULL);
 
 	malloc_fail:;
 		DBG(printf("memory allocation failure\n"););
@@ -243,7 +246,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 
 
 
-static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp)
+static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp)
 {
 	prefifullblock_t *ibp = (prefifullblock_t *)p;
 	if (ibp->event_type != EVENT_PRE_FRAME_UPDATE) return (0);
@@ -280,7 +283,7 @@ static size_t process_pre_frame_update(uint8_t *p, frame_obj_t *framearrayp)
 
 
 
-static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp)
+static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 {
 	postfifullblock_t *ibp = (postfifullblock_t *)p;
 	if (ibp->event_type != EVENT_POST_FRAME_UPDATE) return (0);
@@ -331,7 +334,7 @@ static size_t process_post_frame_update(uint8_t *p, frame_obj_t *framearrayp)
 
 
 
-static size_t process_item_update(uint8_t *p, frame_obj_t *framearrayp)
+static size_t process_item_update(uint8_t *p, frame_t *framearrayp)
 {
 	itemupdatefullinfoblock_t *ibp = (itemupdatefullinfoblock_t *)p;
 	if (ibp->event_type != EVENT_POST_FRAME_UPDATE) return (0);
