@@ -5,7 +5,7 @@ Important notes about luci:
 
 C build instructions:
 ====================
-To make libraries, simply run ``make libluci.a`` or ``make libluci.so``. These files will be created in ``lib/``. To build the example file, run ``make example``. This binary will be generated in the source directory as ``luci``, and can be run with ``./luci``. The parsing function is ``map_and_process(char *filenamep, int *versionp)``; this function takes a pointer to a filename and a pointer to a 3 integer version vector (no files can be above this version). The returned type is a ``slp_file_t``, defined in ``luci.h``. To enale debug messages, simply ``make debug`` before making the library files.
+To make libraries, simply run ``make libluci.a`` or ``make libluci.so``. These files will be created in ``lib/``. To build the example file, run ``make example``. This binary will be generated in the source directory as ``luci``, and can be run with ``./luci``. The parsing function is ``map_and_process(char *filenamep, int *versionp)``; this function takes a pointer to a filename and a pointer to a 3 integer version vector (no files can be below this version). The returned type is a ``slp_file_t``, defined in ``luci.h``. To enale debug messages, simply ``make debug`` before making the library files.
 
 
 Python build instructions
