@@ -16,7 +16,7 @@ int main(int argc, char** argvp)
 	}
 
 	if (argc == 2) {
-		printf("No version number specified. Setting version to 0.0.0. This is not reccomended, read the README.\n");
+		printf("No version number specified. Setting version to 0.0.0. This is not recommended, read the README.\n");
 	} else {
 		int count = 0;
 		char* token = strtok(argvp[2], "."); 
@@ -27,12 +27,13 @@ int main(int argc, char** argvp)
 			if (count > 3) break;
     		} 
 		if (count != 3) {
-			printf("Invalid version number specified. Setting version to 0.0.0. This is not reccomended, read the README.\n");
+			printf("Invalid version number specified. Setting version to 0.0.0. This is not recommended, read the README.\n");
 			version = (int [3]) {0, 0, 0};
 		}
 	}
 
 	slpfilep = map_and_process(argvp[1], version);
-	printf("x position of player on frame 302: %f \n", slpfilep->gamep->framearrayp[302].ports[0].char_frames[0].preframe.x_position);
+	printf("x position of player on frame 7756: %f \n", slpfilep->gamep->framearrayp[7756 + FIRST_FRAME].ports[0].char_frames[0].preframe.x_position);
+	printf("x position of player on frame 7754: %f \n", slpfilep->gamep->framearrayp[7754 + FIRST_FRAME].ports[0].char_frames[0].preframe.x_position);
 	exit(0);
 }
