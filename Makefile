@@ -4,7 +4,7 @@ OBJS=$(SRCS:.c=.o)
 TARGET=luci
 LIBDIR=lib
 PRODFLAGS=
-CFLAGS=-DISPYTHON=0 -g -Wall -O0 $(PRODFLAGS)
+CFLAGS=-DISPYTHON=0 -g -Wall -O0 -fPIC $(PRODFLAGS)
 
 
 ifeq ($(OS),Windows_NT) # Compiler-agnostic OS info
@@ -40,11 +40,11 @@ libluci.so: $(TARGET)
 
 
 example: libluci.so
-		$(CC) example.c -L$(LIBDIR) -lluci -o $(TARGET)  
+		$(CC) example.c -L$(LIBDIR) -lluci -Wl,-rpath="$(LIBDIR)/" -o $(TARGET)  
 
 
 $(TARGET) : $(OBJS)
 	mkdir -p $(LIBDIR)
 
 clean:
-	rm -rf $(OBJS) $(TARGET) example.o $(LIBDIR) a.out
+	rm -rf $(OBJS) $(TARGET) example.o $(LIBDIR) a.out gmon.out
