@@ -28,7 +28,7 @@ int main(int argc, char** argvp)
     		} 
 		if (count != 3) {
 			printf("Invalid version number specified. Setting version to 0.0.0. This is not recommended, read the README.\n");
-			version = (int [3]) {0, 0, 0};
+			version = (int [3]) {0, 0, 0}; // version must be a pointer for this syntax to work
 		}
 	}
 

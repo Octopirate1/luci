@@ -27,9 +27,8 @@ debug:
 		$(MAKE) PRODFLAGS=-DDEBUG=1  all
 
 
-profile:
-		$(MAKE) PRODFLAGS=-pg all
-
+profile: PRODFLAGS+=-pg
+profile: example
 
 libluci.a: $(TARGET)
 		ar rcs $(LIBDIR)/$@ $(TARGET)
@@ -40,7 +39,7 @@ libluci.so: $(TARGET)
 
 
 example: libluci.so
-		$(CC) example.c -L$(LIBDIR) -lluci -Wl,-rpath="$(LIBDIR)/" -o $(TARGET)  
+		$(CC) example.c $(PRODFLAGS) -L$(LIBDIR) -lluci -Wl,-rpath="$(LIBDIR)/" -o $(TARGET)  
 
 
 $(TARGET) : $(OBJS)
