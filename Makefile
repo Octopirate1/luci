@@ -32,15 +32,17 @@ profile:
 
 
 libluci.a: $(TARGET)
-		ar rcs $(LIBDIR)/$@ $(TARGET)
+		ar rcs $(LIBDIR)/$@ $(OBJS)
 
 
 libluci.so: $(TARGET)
 		$(CC) -shared $(OBJS) -o $(LIBDIR)/$@
 
+example: libluci.a
+		$(CC) example.c -L$(LIBDIR) -l:libluci.a -o $(TARGET)
 
-example: libluci.so
-		$(CC) example.c -L$(LIBDIR) -lluci -Wl,-rpath="$(LIBDIR)/" -o $(TARGET)  
+dynamicexample: libluci.so
+		$(CC) example.c -L$(LIBDIR) -l:libluci.so -Wl,-rpath="$(LIBDIR)/" -o $(TARGET) # using -lluci is entirely possible but because both libs can exist we should differenciate
 
 
 $(TARGET) : $(OBJS)
