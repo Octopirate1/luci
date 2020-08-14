@@ -59,6 +59,10 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# AFL stuff
+results/
+test/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

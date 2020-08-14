@@ -1,3 +1,4 @@
+# CC=/usr/bin/afl-gcc
 SRCS=luci-metadata.c luci-process.c luci-element.c luci-utils.c
 DEPS=luci.h
 OBJS=$(SRCS:.c=.o)

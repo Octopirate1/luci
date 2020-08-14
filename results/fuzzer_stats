@@ -1,0 +1,27 @@
+start_time        : 1597421965
+last_update       : 1597423113
+fuzzer_pid        : 23422
+cycles_done       : 0
+execs_done        : 56486
+execs_per_sec     : 63.04
+paths_total       : 5
+paths_favored     : 1
+paths_found       : 4
+paths_imported    : 0
+max_depth         : 2
+cur_path          : 0
+pending_favs      : 1
+pending_total     : 5
+variable_paths    : 0
+stability         : 100.00%
+bitmap_cvg        : 0.17%
+unique_crashes    : 23
+unique_hangs      : 3
+last_path         : 1597421973
+last_crash        : 1597421972
+last_hang         : 1597422534
+execs_since_crash : 54981
+exec_timeout      : 40
+afl_banner        : luci
+afl_version       : 2.36b
+command_line      : afl-fuzz -m 100 -i test/ -o results/ ./luci @@

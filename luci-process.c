@@ -261,6 +261,11 @@ static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp)
 	uint8_t port = ibp->player_index;
 	uint8_t char_count = ibp->is_follower;
 
+	if (framecount + FIRST_FRAME >= MAX_FRAMES) {
+		DBG(printf("more frames than full 8 minutes \n");); // this whole thing here seems fishy
+		return (0);
+	}
+
 	pre_frame_update_t *preframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].preframe);
 
 	preframep->valid = true;
@@ -299,7 +304,7 @@ static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 	uint8_t char_count = ibp->is_follower;
 
 	if (framecount + FIRST_FRAME >= MAX_FRAMES) {
-		DBG(printf("more frames than full 8 minutes"););
+		DBG(printf("more frames than full 8 minutes \n"););
 		return (0);
 	}
 
@@ -351,7 +356,7 @@ static size_t process_item_update(uint8_t *p, frame_t *framearrayp)
 	int32_t framecount = (int32_t)ntohl(ibp->frame_number);
 
 	if (framecount + FIRST_FRAME >= MAX_FRAMES) {
-		DBG(printf("more frames than full 8 minutes");); // this whole thing here seems fishy
+		DBG(printf("more frames than full 8 minutes \n");); // this whole thing here seems fishy
 		return (0);
 	}
 
