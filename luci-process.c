@@ -50,7 +50,7 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 	do {
 
 		if (offset >= len) {
-			DBG(printf("Raw block exceeds expected raw size, program aborting \n"););
+			DBG(printf("Raw block exceeds expected raw size, program aborting. Game end block does not exist \n"););
 			goto fail;
 		}
 
