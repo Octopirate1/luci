@@ -51,7 +51,7 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 
 		if (offset >= len) {
 			DBG(printf("Raw block exceeds expected raw size, program aborting \n"););
-			return 0;
+			goto fail;
 		}
 
 		type = p[offset];
@@ -60,12 +60,14 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 		switch(type) {
 			case EVENT_PAYLOADS:;
 				event_size = process_event(currentp); // should be first object, then never encountered again
+				DBG(if (event_size <= 0) printf("error reading event payloads \n"););
 				break;
 			case EVENT_GAME_START:;
 				gs_count++;
 				if (gs_count >= 2) goto count_fail;
 				game_start_t *gamestartp = (game_start_t *)malloc(sizeof(game_start_t));
 				event_size = process_game_start(currentp, gamestartp);
+				DBG(if (event_size <= 0) printf("error reading game start \n"););
 				gamep->gamestartp = gamestartp;
 				DBG(printf("version: %d.%d.%d \n", version[0], version[1], version[2]););
 				DBG(printf("versionctrl: %d.%d.%d \n", versionctrl[0], versionctrl[1], versionctrl[2]););
@@ -73,15 +75,18 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 				break;
 			case EVENT_PRE_FRAME_UPDATE:;
 				event_size = process_pre_frame_update(currentp, framearrayp);
+				DBG(if (event_size <= 0) printf("error reading preframe update \n"););
 				break;
 			case EVENT_POST_FRAME_UPDATE:;
 				event_size = process_post_frame_update(currentp, framearrayp);
+				DBG(if (event_size <= 0) printf("error reading postframe update \n"););
 				break;
 			case EVENT_GAME_END:;
 				ge_count++;
 				if (ge_count >= 2) goto count_fail;
 				game_end_t *gameendp = (game_end_t *)malloc(sizeof(post_frame_update_t));
 				event_size = process_game_end(currentp, gameendp);
+				DBG(if (event_size <= 0) printf("error reading game end \n"););
 				gamep->gameendp = gameendp;
 				goto success;
 				break;
@@ -90,6 +95,7 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 				break;
 			case EVENT_ITEM_UPDATE:;
 				event_size = process_item_update(currentp, framearrayp);
+				DBG(if (event_size <= 0) printf("error reading item update \n"););
 				break;
 			case EVENT_FRAME_BOOKEND:;
 				event_size = frameendsize;
@@ -98,7 +104,7 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 				event_size = messagesplitsize;
 				break;
 			default:;
-				printf("failed at %zu: %X\n", offset, type);
+				DBG(printf("failed at %zu: %X\n", offset, type););
 				event_size = 0;
 				break;
 		}
@@ -166,8 +172,8 @@ static size_t process_event(uint8_t *p)
 				messagesplitsize = payloadsize;
 				break;
 			default:;
-				printf("undocumented command byte in payload event payload \n");
-				return 0;
+				DBG(printf("undocumented command byte in payload event payload \n"););
+				return (0);
 		}
 	}
 	return (p[1]+1);
@@ -240,7 +246,7 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 	return gamestartsize;
 
 	malloc_fail:;
-		DBG(printf("malloc failed\n"););
+		DBG(printf("gamestart malloc failed\n"););
 		return (0);
 }
 
@@ -292,7 +298,10 @@ static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 	uint8_t port = ibp->player_index;
 	uint8_t char_count = ibp->is_follower;
 
-	if (framecount + FIRST_FRAME >= MAX_FRAMES) return (0);
+	if (framecount + FIRST_FRAME >= MAX_FRAMES) {
+		DBG(printf("more frames than full 8 minutes"););
+		return (0);
+	}
 
 	post_frame_update_t *postframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].postframe);
 
@@ -337,11 +346,14 @@ static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 static size_t process_item_update(uint8_t *p, frame_t *framearrayp)
 {
 	itemupdatefullinfoblock_t *ibp = (itemupdatefullinfoblock_t *)p;
-	if (ibp->event_type != EVENT_POST_FRAME_UPDATE) return (0);
+	if (ibp->event_type != EVENT_ITEM_UPDATE) return (0);
 
 	int32_t framecount = (int32_t)ntohl(ibp->frame_number);
 
-	if (framecount + FIRST_FRAME >= MAX_FRAMES) return (0);
+	if (framecount + FIRST_FRAME >= MAX_FRAMES) {
+		DBG(printf("more frames than full 8 minutes");); // this whole thing here seems fishy
+		return (0);
+	}
 
 	int i;
 
@@ -386,6 +398,6 @@ static size_t process_game_end(uint8_t *p, game_end_t *gameendp)
 	return gameendsize;
 
 	malloc_fail:;
-		DBG(printf("malloc failed\n"););
+		DBG(printf("gameend malloc failed\n"););
 		return (0);
 }
