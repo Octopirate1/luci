@@ -31,6 +31,9 @@ debug:
 profile: PRODFLAGS+=-pg
 profile: example
 
+afl: CC=/usr/bin/afl-gcc
+afl: example
+
 libluci.a: $(TARGET)
 		ar rcs $(LIBDIR)/$@ $(OBJS)
 

@@ -20,5 +20,5 @@ To import, use ``import luci``.
 Fuzzing
 ====================
 
-Use afl-gcc or afl-clang to complile, then use ``afl-fuzz -i test/ -o results/ ./luci @@``
+Use afl-gcc or afl-clang to complile, then use ``afl-fuzz -m 100 -i test/ -o results/ ./luci @@``
 
