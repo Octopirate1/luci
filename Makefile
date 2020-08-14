@@ -40,13 +40,8 @@ libluci.so: $(TARGET)
 example: libluci.a
 		$(CC) example.c -L$(LIBDIR) -l:libluci.a -o $(TARGET)
 
-<<<<<<< HEAD
 dynamicexample: libluci.so
 		$(CC) example.c -L$(LIBDIR) -l:libluci.so -Wl,-rpath="$(LIBDIR)/" -o $(TARGET) # using -lluci is entirely possible but because both libs can exist we should differenciate
-=======
-example: libluci.so
-		$(CC) example.c $(PRODFLAGS) -L$(LIBDIR) -lluci -Wl,-rpath="$(LIBDIR)/" -o $(TARGET)  
->>>>>>> fd557cfcfc27b716a49dbdb72fe2baa0bb2a617a
 
 
 $(TARGET) : $(OBJS)
