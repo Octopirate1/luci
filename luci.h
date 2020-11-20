@@ -30,6 +30,24 @@ float ntohf(uint32_t net32);
 	// object.
 	//
 
+static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
+static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
+static size_t process_item_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_event(uint8_t *p);
+typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D, EVENT_MESSAGE_SPLITTER = 0x10 } event_t;
+uint8_t version[4];
+
+size_t gamestartsize;
+size_t preframesize;
+size_t postframesize;
+size_t framestartsize;
+size_t itemupdatesize;
+size_t frameendsize;
+size_t gameendsize;
+size_t geckolistsize;
+size_t messagesplitsize;
 
 typedef float float_t;
 typedef bool bool_t;
