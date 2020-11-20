@@ -50,7 +50,6 @@ afl: example
 libluci.a: $(TARGET)
 		ar rcs $(LIBDIR)/$@ $(OBJS)
 
-
 libluci.so: $(TARGET)
 		$(CC) -shared $(OBJS) -o $(LIBDIR)/$@
 

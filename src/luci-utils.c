@@ -1,4 +1,4 @@
-#include "luci.h"
+#include "../luci.h"
 #include <arpa/inet.h>
 
 float ntohf(uint32_t net32)

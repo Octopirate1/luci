@@ -1,4 +1,4 @@
-#include "src/luci.h"
+#include "luci.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

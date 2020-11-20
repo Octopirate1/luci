@@ -9,7 +9,7 @@
 #include <errno.h>
 #include "endianag.h"
 
-#include "luci.h"
+#include "../luci.h"
 
 	//
 	// This is a two step parse, but fast.
