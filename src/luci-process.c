@@ -4,6 +4,14 @@
 #include <string.h>
 #include "endianag.h"
 
+static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
+static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
+static size_t process_item_update(uint8_t *p, frame_t *framearrayp);
+static size_t process_event(uint8_t *p);
+
+uint8_t version[4];
 
 game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 {
