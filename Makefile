@@ -1,10 +1,15 @@
 # CC=/usr/bin/afl-gcc
-SRCS=luci-metadata.c luci-process.c luci-element.c luci-utils.c
 DEPS=luci.h
-OBJS=$(SRCS:.c=.o)
-TARGET=luci
+SRCDIR=src
+OBJDIR=obj
+BINDIR=bin
+SRCS:=$(wildcard $(SRCDIR)/*.c)
+INCS:=$(wildcard $(SRCDIR)/*.h)
+OBJS=$(SRCS:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+TARGET=$(BINDIR)/luci
 LIBDIR=lib
 PRODFLAGS=
+LFLAGS=-Wall -I. -lm
 CFLAGS=-DISPYTHON=0 -g -Wall -O0 -fPIC $(PRODFLAGS)
 
 
@@ -23,6 +28,14 @@ endif
 
 all: $(TARGET) 
 
+$(TARGET) : $(OBJS)
+	mkdir -p $(BINDIR)
+	mkdir -p $(LIBDIR)
+#	$(CC) $(OBJS) $(LFLAGS) -o $@
+
+$(OBJS) : $(OBJDIR)/%.o : $(SRCDIR)/%.c
+	mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 debug:
 		$(MAKE) PRODFLAGS=-DDEBUG=1  all
@@ -47,9 +60,5 @@ example: libluci.a
 dynamicexample: libluci.so
 		$(CC) example.c -L$(LIBDIR) -l:libluci.so -Wl,-rpath="$(LIBDIR)/" -o $(TARGET) # using -lluci is entirely possible but because both libs can exist we should differenciate
 
-
-$(TARGET) : $(OBJS)
-	mkdir -p $(LIBDIR)
-
 clean:
-	rm -rf $(OBJS) $(TARGET) example.o $(LIBDIR) a.out gmon.out
+	rm -rf $(OBJDIR) $(BINDIR) example.o $(LIBDIR) a.out gmon.out
