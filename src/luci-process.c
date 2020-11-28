@@ -4,6 +4,7 @@
 #include <string.h>
 #include "endianag.h"
 
+
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp);
 static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp);
 static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp);
@@ -11,10 +12,15 @@ static size_t process_game_end(uint8_t *p, game_end_t *gameendp);
 static size_t process_item_update(uint8_t *p, frame_t *framearrayp);
 static size_t process_event(uint8_t *p);
 
+
 uint8_t version[4];
 
-game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
+
+game_t *process_raw_data(void *ptr, size_t len, metadata_t md, int versionctrl[])
 {
+
+	DBG(printf("Beginning raw block processing.\n"););
+
 	uint8_t *p = (uint8_t*)ptr;
 	uint8_t *currentp = p;
 	size_t offset = 0;
@@ -23,9 +29,18 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 	int gs_count = 0;
 	int ge_count = 0;
 
-	frame_t *framearrayp = (frame_t *)calloc(MAX_FRAMES, sizeof(frame_t));
+	size_t framenum = md.lastFrame + FIRST_FRAME;
 
-	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", sizeof(frame_t) * MAX_FRAMES, sizeof(frame_t)););
+	DBG(printf("framenum = %d\n", framenum););
+
+	frame_t *framearrayp = (frame_t *)calloc(framenum, sizeof(frame_t) + md.portNum*sizeof(framearrayp->frame[0]));
+
+	/*for (int i; i = ports; i++) {
+		chars = get_chars_port(ports);
+		*framearrayp[i] = (frame_t *)calloc(frames, sizeof(frame_t)*chars);
+	}*/
+
+	DBG(printf("size of frames array: %lu, size of frames_obj: %lu \n", (sizeof(frame_t) + md.portNum*sizeof(framearrayp->frame[0])) * framenum, sizeof(frame_t)););
 
 	game_t *gamep = (game_t *)malloc(sizeof(game_t));
 
@@ -123,7 +138,6 @@ game_t *process_raw_data(void *ptr, size_t len, int versionctrl[])
 }
 
 
-
 static size_t process_event(uint8_t *p)
 {
 	if (p[0] != EVENT_PAYLOADS) return (0);
@@ -166,7 +180,6 @@ static size_t process_event(uint8_t *p)
 	}
 	return (p[1]+1);
 }
-
 
 
 static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
@@ -239,7 +252,6 @@ static size_t process_game_start(uint8_t *p, game_start_t *gamestartp)
 }
 
 
-
 static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp)
 {
 	prefifullblock_t *ibp = (prefifullblock_t *)p;
@@ -257,7 +269,7 @@ static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp)
 		return (0);
 	}
 
-	pre_frame_update_t *preframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].preframe);
+	pre_frame_update_t *preframep = &(framearrayp[framecount + FIRST_FRAME].frame[port][char_count].preframe);
 
 	preframep->valid = true;
 	preframep->frame_number = framecount;
@@ -284,7 +296,6 @@ static size_t process_pre_frame_update(uint8_t *p, frame_t *framearrayp)
 }
 
 
-
 static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 {
 	postfifullblock_t *ibp = (postfifullblock_t *)p;
@@ -302,7 +313,7 @@ static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 		return (0);
 	}
 
-	post_frame_update_t *postframep = &(framearrayp[framecount + FIRST_FRAME].ports[port].char_frames[char_count].postframe);
+	post_frame_update_t *postframep = &(framearrayp[framecount + FIRST_FRAME].frame[port][char_count].postframe);
 
 	postframep->frame_number = framecount;
 	postframep->player_index = port;
@@ -339,7 +350,6 @@ static size_t process_post_frame_update(uint8_t *p, frame_t *framearrayp)
 
 	return postframesize;
 }
-
 
 
 static size_t process_item_update(uint8_t *p, frame_t *framearrayp)
@@ -384,7 +394,6 @@ static size_t process_item_update(uint8_t *p, frame_t *framearrayp)
 
 	return itemupdatesize;
 }
-
 
 
 static size_t process_game_end(uint8_t *p, game_end_t *gameendp)

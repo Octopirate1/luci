@@ -11,6 +11,7 @@
 
 #include "../luci.h"
 
+
 	//
 	// This is a two step parse, but fast.
 	// The first is to unpack a UBJSON binary file
@@ -29,9 +30,12 @@ static size_t process_ubjson_false(void *memp, size_t offset);
 static size_t process_ubjson_noop(void *memp, size_t offset);
 static size_t process_ubjson_string_name(void *memp, size_t offset, char **strpp);
 static size_t process_ubjson_integer_value(void *memp, size_t offset, int64_t *bufp);
+static metadata_t process_metadata_struct(element_t *listp);
+
 
 size_t filelen;
 int versionctrl[3];
+
 
 slp_file_t *map_and_process(char *filenamep, int *versionp)
 {
@@ -65,7 +69,6 @@ slp_file_t *map_and_process(char *filenamep, int *versionp)
 }
 
 
-
 static slp_file_t *process_file(void *memp, size_t size)
 {
 
@@ -77,6 +80,8 @@ static slp_file_t *process_file(void *memp, size_t size)
 
 	DBG(element_list_dump(listp););
 
+	metadata_t md = process_metadata_struct(listp);
+
 	fflush(stdout);
 	element_t *raw_datap = find_element_by_name(listp, "raw");
 	if (raw_datap == NULL) {
@@ -86,7 +91,7 @@ static slp_file_t *process_file(void *memp, size_t size)
 		if (rawp->size != 1) {
 			printf("Raw data should be of byte length\n");
 		} else {
-			gamep = process_raw_data(rawp->datap, rawp->count, versionctrl); // where the real magic happens
+			gamep = process_raw_data(rawp->datap, rawp->count, md, versionctrl); // where the real magic happens
 		}
 	}
 
@@ -95,7 +100,6 @@ static slp_file_t *process_file(void *memp, size_t size)
 
 	return slpfilep;
 }
-
 
 
 static element_t *process_ubjson_object(void *memp, size_t *offsetp)
@@ -159,8 +163,6 @@ fail:;
 	free_elements(elemlistp);
 	return (NULL);
 }
-
-
 
 
 static array_block_t *process_ubjson_array(void *memp, size_t *offsetp)
@@ -374,7 +376,6 @@ static size_t process_ubjson_string_name(void *memp, size_t offset, char **strpp
 }
 
 
-
 static size_t process_ubjson_noop(void *memp, size_t offset)
 {
 	return (1);
@@ -385,6 +386,7 @@ static size_t process_ubjson_true(void *memp, size_t offset)
 {
 	return (1);
 }
+
 
 static size_t process_ubjson_false(void *memp, size_t offset)
 {
@@ -485,4 +487,28 @@ static size_t process_ubjson_value(void *memp, size_t offset, element_t *elemp)
 
 	DBG(fflush(stdout););
 	return (size);
+}
+
+
+static metadata_t process_metadata_struct(element_t *listp)
+{
+	DBG(printf("Processing metadata struct...\n"););
+	metadata_t md;
+	element_t *inmdp = listp->u.object_listp; // enter metadata element to find as finding is not recursive
+
+	md.lastFrame = (int32_t)find_element_by_name(inmdp, "lastFrame")->u.integer_value;
+
+	element_t *players = find_element_by_name(inmdp, "players");
+	element_t *playerobjp = players->u.object_listp;
+
+	// counting ports
+	size_t portcount = 0;
+	while (playerobjp != NULL) {
+		portcount++;
+		playerobjp = playerobjp->nextp;
+	}
+
+	md.portNum = portcount;
+
+	return md;
 }

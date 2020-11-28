@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
+
 static void prindent(int n);
+
 
 element_t *new_element()
 {
@@ -16,6 +18,7 @@ element_t *new_element()
 	return (ptr);
 }
 
+
 array_block_t *new_array_block(void *memp, size_t count, size_t size)
 {
 	array_block_t *ptr = calloc(1, sizeof(array_block_t));
@@ -27,11 +30,13 @@ array_block_t *new_array_block(void *memp, size_t count, size_t size)
 	return (ptr);
 }
 
+
 element_t *add_element(element_t *listp, element_t *newp)
 {
 	if (newp!=NULL) newp->nextp = listp;
 	return (newp);
 }
+
 
 void free_array_block(array_block_t *arrayp)
 {
@@ -41,6 +46,7 @@ void free_array_block(array_block_t *arrayp)
 	arrayp->nextp = NULL;
 	free(arrayp);
 }
+
 
 void free_elements(element_t *listp)
 {
@@ -68,12 +74,14 @@ void free_elements(element_t *listp)
 	free(listp);
 }
 
+
 void element_list_dump(element_t *listp)
 {
 	printf("{\n");
 	element_list_recurse(listp, 1);
 	printf("}\n");
 }
+
 
 void element_dump(element_t *elemp, int indent)
 {
@@ -111,6 +119,7 @@ void element_dump(element_t *elemp, int indent)
 	printf("%s\n", elemp->nextp ? ",": "");
 }
 
+
 element_t *find_element_by_name(element_t *listp, char *namep)
 {
 	while (listp != NULL) {
@@ -120,6 +129,7 @@ element_t *find_element_by_name(element_t *listp, char *namep)
 	return (listp);
 }
 
+
 void element_list_recurse(element_t *listp, int indent)
 {
 	while (listp != NULL) {
@@ -127,6 +137,7 @@ void element_list_recurse(element_t *listp, int indent)
 		listp = listp->nextp;
 	}
 }
+
 
 static void prindent(int n){
   for(int i=0;i<n;i++) printf(" ");

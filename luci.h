@@ -7,14 +7,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-
-typedef struct GAME game_t;
-typedef struct SLP_FILE slp_file_t;
-
-slp_file_t *map_and_process(char *filenamep, int *version);
-game_t *process_raw_data(void *ptr, size_t len, int versionctrl[]);
-
-float ntohf(uint32_t net32);
+#define VERSION_LENGTH	4
+#define PORT_COUNT			4
+#define NAMETAG_LENGTH	8
+#define CHAR_COUNT			2
+#define MAX_FRAMES			28800 // 8 minutes*60 seconds*60 frames. Don't need to worry about rollback frames as we overwrite them.
+#define FIRST_FRAME			123
+#define MAX_ITEMS				15
 
 #ifdef DEBUG
 #define LUCI_DEBUG 1
@@ -23,6 +22,8 @@ float ntohf(uint32_t net32);
 #define LUCI_DEBUG	0
 #define	DBG(s)	do { } while (0)
 #endif
+
+
 	//
 	// This is a two step parse, but fast.
 	// The first is to unpack a UBJSON binary file
@@ -30,7 +31,48 @@ float ntohf(uint32_t net32);
 	// object.
 	//
 
+
 typedef enum { EVENT_PAYLOADS = 0x35, EVENT_GAME_START = 0x36, EVENT_PRE_FRAME_UPDATE = 0x37, EVENT_POST_FRAME_UPDATE = 0x38, EVENT_GAME_END = 0x39, EVENT_FRAME_START = 0x3A, EVENT_ITEM_UPDATE = 0x3B, EVENT_FRAME_BOOKEND = 0x3C, EVENT_GECKO_LIST = 0x3D, EVENT_MESSAGE_SPLITTER = 0x10 } event_t;
+
+typedef float float_t;
+typedef bool bool_t;
+typedef enum ELEMENT_TYPE { ET_New = 0, ET_Char, ET_String, ET_Int, ET_Float, ET_Array, ET_Object } element_type_t;
+
+typedef struct ELEMENT element_t;
+typedef struct ARRAY_BLOCK array_block_t;
+
+typedef struct METADATA metadata_t;
+
+typedef struct GAME_START game_start_t;
+typedef struct GAME_START_PORT game_start_port_t;
+typedef struct GAME_INFO_BLOCK game_info_block_t; // technically a uint8[312], but struct makes it far more clear what everything is, + can be passed into python as an object
+typedef struct GAME_INFO_BLOCK_PORT game_info_block_port_t;
+
+typedef struct PRE_FRAME_UPDATE pre_frame_update_t;
+typedef struct POST_FRAME_UPDATE post_frame_update_t;
+typedef struct ITEM_UPDATE item_update_t;
+typedef struct FRAME frame_t;
+
+typedef struct GAME_END game_end_t;
+
+typedef struct GAME game_t;
+typedef struct SLP_FILE slp_file_t;
+
+
+float ntohf(uint32_t net32);
+
+slp_file_t *map_and_process(char *filenamep, int *version);
+game_t *process_raw_data(void *ptr, size_t len, metadata_t md, int versionctrl[]);
+
+element_t *new_element();
+array_block_t *new_array_block(void *memp, size_t count, size_t size);
+element_t *add_element(element_t *listp, element_t *newp);
+void element_list_dump(element_t *listp);
+void element_dump(element_t *elemp, int indent);
+void element_list_recurse(element_t *listp, int indent);
+void free_elements(element_t *listp);
+element_t *find_element_by_name(element_t *listp, char *namep);
+
 
 size_t gamestartsize;
 size_t preframesize;
@@ -41,13 +83,6 @@ size_t frameendsize;
 size_t gameendsize;
 size_t geckolistsize;
 size_t messagesplitsize;
-
-typedef float float_t;
-typedef bool bool_t;
-typedef enum ELEMENT_TYPE { ET_New = 0, ET_Char, ET_String, ET_Int, ET_Float, ET_Array, ET_Object } element_type_t;
-
-typedef struct ELEMENT element_t;
-typedef struct ARRAY_BLOCK array_block_t;
 
 struct ELEMENT {
 	element_type_t type;
@@ -62,7 +97,6 @@ struct ELEMENT {
 	} u;
 	element_t *nextp;
 };
-
 	// Only supports fixed size elements
 	// build a chain of these for multi-sized array elements.
 struct ARRAY_BLOCK {
@@ -72,32 +106,23 @@ struct ARRAY_BLOCK {
 	array_block_t *nextp;
 };
 
-
-element_t *new_element();
-array_block_t *new_array_block(void *memp, size_t count, size_t size);
-element_t *add_element(element_t *listp, element_t *newp);
-void element_list_dump(element_t *listp);
-void element_dump(element_t *elemp, int indent);
-void element_list_recurse(element_t *listp, int indent);
-void free_elements(element_t *listp);
-element_t *find_element_by_name(element_t *listp, char *namep);
-
-
-
-#define VERSION_LENGTH	4
-#define PORT_COUNT			4
-#define NAMETAG_LENGTH	8
-#define CHAR_COUNT			2
-#define MAX_FRAMES			28800 // 8 minutes*60 seconds*60 frames. Don't need to worry about rollback frames as we overwrite them.
-#define FIRST_FRAME			123
-#define MAX_ITEMS				15
-
-
-
-typedef struct GAME_START game_start_t;
-typedef struct GAME_START_PORT game_start_port_t;
-typedef struct GAME_INFO_BLOCK game_info_block_t; // technically a uint8[312], but struct makes it far more clear what everything is, + can be passed into python as an object
-typedef struct GAME_INFO_BLOCK_PORT game_info_block_port_t;
+struct METADATA {
+	char *startAt;
+	int32_t lastFrame;
+	char *playedOn;
+	char *consoleNick;
+	size_t portNum;
+	struct {
+		struct {
+			uint8_t charNum;
+			uint16_t numFrames;
+		} characters[2];
+		struct {
+			char *display;
+			char *code;
+		} name;
+	} players[];
+};
 
 struct GAME_START {
 	uint8_t version[VERSION_LENGTH];
@@ -204,10 +229,6 @@ typedef struct __attribute__((__packed__)) GSFULLBLOCK  {
 	uint8_t major_scene; // 0x1A4
 } gsfullblock_t;
 
-
-
-typedef struct GAME_END game_end_t;
-
 struct GAME_END {
 	uint8_t game_end_method;
 	int8_t lras_init;
@@ -218,10 +239,6 @@ typedef struct __attribute__((__packed__)) GAMEENDFULLBLOCK  {
 	uint8_t game_end_method; // offset 0x1
 	int8_t lras_init; // offset 0x2
 } gameendfullblock_t;
-
-
-
-typedef struct PRE_FRAME_UPDATE pre_frame_update_t;
 
 struct PRE_FRAME_UPDATE {
 	bool_t valid;
@@ -269,10 +286,6 @@ typedef struct __attribute__((__packed__)) PREFIFULLBLOCK  {
 	uint32_t damage_percent; // 0x3C
 } prefifullblock_t;
 
-
-
-typedef struct POST_FRAME_UPDATE post_frame_update_t;
-
 struct POST_FRAME_UPDATE {
 	int32_t frame_number;
 	uint8_t player_index;
@@ -305,7 +318,6 @@ struct POST_FRAME_UPDATE {
 	float_t attack_air_x_speed;
 	float_t attack_air_y_speed;
 	float_t si_ground_x_speed;
-
 };
 
 typedef struct __attribute__((__packed__)) POSTFIFULLBLOCK  {
@@ -342,10 +354,6 @@ typedef struct __attribute__((__packed__)) POSTFIFULLBLOCK  {
 	uint32_t attack_air_y_speed; // 0x41
 	uint32_t si_ground_x_speed; // 0x45
 } postfifullblock_t;
-
-
-
-typedef struct ITEM_UPDATE item_update_t;
 
 struct ITEM_UPDATE {
 	bool_t valid;
@@ -388,26 +396,19 @@ typedef struct __attribute__((__packed__)) ITEMUPDATEFULLINFOBLOCK  {
 	int8_t owner; // 0x28
 } itemupdatefullinfoblock_t;
 
-typedef struct FRAME frame_t;
-
 struct FRAME {
-	struct {
-		struct {
-			pre_frame_update_t preframe;
-			post_frame_update_t postframe;
-		} char_frames[CHAR_COUNT]; // 0 is leader, 1 is follower or NULL value if no follower
-	} ports[PORT_COUNT]; // NULL values if no player on port
 	item_update_t itemupdatearray[MAX_ITEMS];
+	struct {
+		pre_frame_update_t preframe;
+		post_frame_update_t postframe;
+	} frame[/*port*/][CHAR_COUNT]/*char*/;
 };
-
 
 struct GAME {
 	game_start_t *gamestartp;
 	frame_t *framearrayp;
 	game_end_t *gameendp;
 };
-
-
 
 struct SLP_FILE {
 	game_t *gamep;
